@@ -11,10 +11,8 @@ const CACHE_NAME = "gemma-medical-v1";
 
 const STATIC_ASSETS = [
     "/",
-    "/index.html",
     "/css/styles.css",
-    "/css/ai-assistant.css",
-    "/js/ai-assistant.js",
+    "/js/app.js",
     "/manifest.json",
     "/assets/icon-192.svg",
     "/assets/icon-512.svg",
