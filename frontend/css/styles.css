@@ -2390,3 +2390,53 @@ img {
 .tool-result-panel::-webkit-scrollbar-thumb:hover {
     background: var(--text-muted);
 }
+
+/* Loading Progress Bar */
+.ai-loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    text-align: center;
+}
+
+.ai-progress-bar {
+    width: 100%;
+    max-width: 400px;
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.ai-progress-bar-fill {
+    height: 100%;
+    background: var(--brand-primary);
+    border-radius: 3px;
+    animation: ai-progress 35s ease-out forwards;
+}
+
+@keyframes ai-progress {
+    0% { width: 0%; }
+    10% { width: 15%; }
+    30% { width: 35%; }
+    50% { width: 55%; }
+    70% { width: 70%; }
+    85% { width: 82%; }
+    95% { width: 90%; }
+    100% { width: 95%; }
+}
+
+.ai-loading-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 6px;
+}
+
+.ai-loading-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
