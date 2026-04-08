@@ -50,6 +50,15 @@ async def serve_sw():
     return FileResponse(FRONTEND_DIR / "sw.js", media_type="application/javascript")
 
 
+@app.get("/favicon.ico")
+async def serve_favicon():
+    """Serve favicon."""
+    icon = FRONTEND_DIR / "assets" / "icon-192.svg"
+    if icon.exists():
+        return FileResponse(icon, media_type="image/svg+xml")
+    return FileResponse(FRONTEND_DIR / "assets" / "icon-192.svg")
+
+
 @app.get("/")
 async def serve_index():
     """Serve the main application page."""
