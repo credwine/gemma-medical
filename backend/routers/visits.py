@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from backend.services.visit_service import (
+    get_all_visits,
     get_visits_by_patient,
     get_visit,
     create_visit,
@@ -53,11 +54,19 @@ class VisitUpdate(BaseModel):
 
 
 @router.get("/visits")
-async def list_visits(patient_id: Optional[str] = Query(None)):
-    """List visits, optionally filtered by patient_id."""
-    if not patient_id:
-        raise HTTPException(status_code=400, detail="patient_id query parameter is required")
-    results = get_visits_by_patient(patient_id)
+async def list_visits(patient_id: Optional[str] = Query(None), today: Optional[bool] = Query(None)):
+    """List visits. Filter by patient_id, or get all recent visits."""
+    if patient_id:
+        results = get_visits_by_patient(patient_id)
+    else:
+        results = get_all_visits(limit=50)
+
+    # Filter to today's visits if requested
+    if today:
+        from datetime import date
+        today_str = date.today().isoformat()
+        results = [v for v in results if v.get("visit_date", "").startswith(today_str)]
+
     return JSONResponse(content=results)
 
 

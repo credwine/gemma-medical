@@ -47,6 +47,13 @@ def _default_vitals() -> dict:
     }
 
 
+def get_all_visits(limit: int = 50) -> list[dict]:
+    """Return all visits, sorted newest first, capped at limit."""
+    visits = _read_all()
+    visits.sort(key=lambda v: v.get("visit_date", ""), reverse=True)
+    return visits[:limit]
+
+
 def get_visits_by_patient(patient_id: str) -> list[dict]:
     """Return all visits for a given patient, sorted newest first."""
     visits = _read_all()
