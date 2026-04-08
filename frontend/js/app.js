@@ -837,16 +837,59 @@ function renderClinicResult(container, data) {
         </div>
     `;
 
-    // Raw response handling -- the API returns varying formats
-    if (typeof data === 'string') {
-        html += `<div class="result-section"><div class="result-text">${escapeHtml(data)}</div></div>`;
-    } else if (data.response || data.assessment || data.analysis) {
-        const content = data.response || data.assessment || data.analysis;
-        if (typeof content === 'string') {
-            html += `<div class="result-section"><div class="result-text">${formatAiText(content)}</div></div>`;
-        } else {
-            html += `<div class="result-section"><div class="result-text">${formatAiText(JSON.stringify(content, null, 2))}</div></div>`;
+    // Structured response rendering
+    if (data.possible_conditions && Array.isArray(data.possible_conditions)) {
+        // Referral urgency banner
+        const urgency = (data.referral_urgency || 'routine').toLowerCase();
+        const urgencyColors = { emergency: 'var(--severity-emergency)', urgent: 'var(--severity-high)', routine: 'var(--severity-moderate)', 'self-care': 'var(--severity-low)' };
+        const urgencyColor = urgencyColors[urgency] || 'var(--severity-moderate)';
+        html += `<div class="severity-banner" style="background:${urgencyColor};color:white;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-weight:700;text-transform:uppercase;">Referral: ${escapeHtml(data.referral_urgency || 'Routine')}</div>`;
+
+        // Possible conditions
+        html += `<div class="result-section"><div class="result-section-title">Possible Conditions</div>`;
+        data.possible_conditions.forEach(c => {
+            const lk = (c.likelihood || 'moderate').toLowerCase();
+            const badge = lk === 'high' ? 'severity-emergency' : lk === 'moderate' ? 'severity-moderate' : 'severity-low';
+            html += `<div class="clinical-card" style="margin-bottom:8px;padding:12px 16px;border-left:4px solid ${lk === 'high' ? 'var(--severity-emergency)' : lk === 'moderate' ? 'var(--severity-moderate)' : 'var(--severity-low)'};">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <strong>${escapeHtml(c.name || '')}</strong>
+                    <span class="severity-badge ${badge}">${escapeHtml(c.likelihood || '')}</span>
+                </div>
+                <div style="font-size:0.9rem;color:var(--text-secondary);">${escapeHtml(c.description || '')}</div>
+            </div>`;
+        });
+        html += `</div>`;
+
+        // Red flags
+        if (data.red_flags && data.red_flags.length > 0) {
+            html += `<div class="result-section"><div class="result-section-title">Red Flags</div>`;
+            data.red_flags.forEach(f => {
+                html += `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 12px;background:var(--severity-emergency-bg, #fef2f2);border:1px solid #fecaca;border-radius:6px;margin-bottom:6px;font-size:0.9rem;color:#991b1b;">
+                    <span style="flex-shrink:0;">&#9888;</span> ${escapeHtml(f)}
+                </div>`;
+            });
+            html += `</div>`;
         }
+
+        // Recommended actions
+        if (data.recommended_actions && data.recommended_actions.length > 0) {
+            html += `<div class="result-section"><div class="result-section-title">Recommended Actions</div>`;
+            data.recommended_actions.forEach((a, i) => {
+                html += `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;font-size:0.9rem;">
+                    <span style="flex-shrink:0;font-weight:700;color:var(--brand-primary);">${i + 1}.</span> ${escapeHtml(a)}
+                </div>`;
+            });
+            html += `</div>`;
+        }
+
+        // Notes
+        if (data.notes) {
+            html += `<div class="result-section"><div class="result-section-title">Clinical Notes</div>
+                <div class="clinical-card" style="padding:12px 16px;font-size:0.9rem;">${escapeHtml(data.notes)}</div>
+            </div>`;
+        }
+    } else if (typeof data === 'string') {
+        html += `<div class="result-section"><div class="result-text">${formatAiText(data)}</div></div>`;
     } else {
         html += `<div class="result-section"><div class="result-text">${formatAiText(JSON.stringify(data, null, 2))}</div></div>`;
     }
@@ -993,11 +1036,34 @@ function renderDrugResult(container, data) {
         </div>
     `;
 
-    const content = data.response || data.interactions || data.analysis || data;
-    if (typeof content === 'string') {
-        html += `<div class="result-section"><div class="result-text">${formatAiText(content)}</div></div>`;
+    if (data.interactions && Array.isArray(data.interactions)) {
+        if (data.interactions.length > 0) {
+            html += `<div class="result-section"><div class="result-section-title">Drug Interactions Found</div>`;
+            data.interactions.forEach(ix => {
+                const sev = (ix.severity || 'moderate').toLowerCase();
+                const sevColors = { critical: '#dc2626', major: '#ea580c', moderate: '#f59e0b', minor: '#3b82f6' };
+                const color = sevColors[sev] || '#f59e0b';
+                html += `<div class="clinical-card" style="margin-bottom:8px;padding:12px 16px;border-left:4px solid ${color};">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                        <strong>${escapeHtml(ix.drug_pair || '')}</strong>
+                        <span class="severity-badge" style="background:${color};color:white;padding:2px 8px;border-radius:4px;font-size:0.75rem;font-weight:700;text-transform:uppercase;">${escapeHtml(ix.severity || '')}</span>
+                    </div>
+                    <div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:4px;">${escapeHtml(ix.description || '')}</div>
+                    <div style="font-size:0.85rem;color:var(--brand-primary);font-weight:500;">${escapeHtml(ix.recommendation || '')}</div>
+                </div>`;
+            });
+            html += `</div>`;
+        } else {
+            html += `<div class="result-section"><div class="clinical-card" style="border-left:4px solid var(--severity-low);padding:12px 16px;">No dangerous interactions detected between these medications.</div></div>`;
+        }
+        if (data.warnings && data.warnings.length > 0) {
+            html += `<div class="result-section"><div class="result-section-title">Warnings</div>`;
+            data.warnings.forEach(w => { html += `<div style="padding:6px 12px;background:#fffbeb;border:1px solid #fed7aa;border-radius:6px;margin-bottom:4px;font-size:0.9rem;">${escapeHtml(w)}</div>`; });
+            html += `</div>`;
+        }
+        if (data.notes) { html += `<div class="result-section"><div class="clinical-card" style="padding:12px 16px;font-size:0.9rem;">${escapeHtml(data.notes)}</div></div>`; }
     } else {
-        html += `<div class="result-section"><div class="result-text">${formatAiText(JSON.stringify(content, null, 2))}</div></div>`;
+        html += `<div class="result-section"><div class="result-text">${formatAiText(typeof data === 'string' ? data : JSON.stringify(data, null, 2))}</div></div>`;
     }
 
     html += `
@@ -1167,12 +1233,61 @@ function renderMaternalResult(container, data) {
         riskLabel = 'LOW RISK -- Continue Standard Care';
     }
 
-    html += `<div class="severity-banner ${riskClass}">${riskLabel}</div>`;
-
-    if (typeof content === 'string') {
-        html += `<div class="result-section"><div class="result-text">${formatAiText(content)}</div></div>`;
+    // Use structured data if available
+    if (data.risk_level) {
+        const rl = data.risk_level.toLowerCase();
+        const rlColors = { emergency: '#dc2626', high: '#ea580c', moderate: '#f59e0b', low: '#16a34a' };
+        const rlColor = rlColors[rl] || '#f59e0b';
+        html += `<div style="background:${rlColor};color:white;padding:16px;border-radius:8px;margin-bottom:16px;text-align:center;font-size:1.3rem;font-weight:800;text-transform:uppercase;">${escapeHtml(data.risk_level)} RISK</div>`;
     } else {
-        html += `<div class="result-section"><div class="result-text">${formatAiText(JSON.stringify(content, null, 2))}</div></div>`;
+        html += `<div class="severity-banner ${riskClass}">${riskLabel}</div>`;
+    }
+
+    if (data.risk_factors && Array.isArray(data.risk_factors)) {
+        html += `<div class="result-section"><div class="result-section-title">Risk Factors</div>`;
+        data.risk_factors.forEach(rf => {
+            html += `<div class="clinical-card" style="margin-bottom:8px;padding:12px 16px;border-left:4px solid #ea580c;">
+                <strong>${escapeHtml(rf.factor || '')}</strong>
+                <div style="font-size:0.9rem;color:var(--text-secondary);">${escapeHtml(rf.explanation || '')}</div>
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (data.immediate_actions && data.immediate_actions.length > 0) {
+        html += `<div class="result-section"><div class="result-section-title">Immediate Actions</div>`;
+        data.immediate_actions.forEach((a, i) => {
+            html += `<div style="display:flex;gap:8px;padding:8px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-bottom:6px;font-size:0.9rem;">
+                <span style="font-weight:700;color:var(--brand-primary);">${i + 1}.</span> ${escapeHtml(a)}
+            </div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (data.danger_signs_to_watch && data.danger_signs_to_watch.length > 0) {
+        html += `<div class="result-section"><div class="result-section-title">Danger Signs to Watch</div>`;
+        data.danger_signs_to_watch.forEach(d => {
+            html += `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;margin-bottom:6px;font-size:0.9rem;color:#991b1b;">&#9888; ${escapeHtml(d)}</div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (data.monitoring_plan && data.monitoring_plan.length > 0) {
+        html += `<div class="result-section"><div class="result-section-title">Monitoring Plan</div>`;
+        data.monitoring_plan.forEach(m => {
+            html += `<div style="padding:6px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;font-size:0.9rem;">${escapeHtml(m)}</div>`;
+        });
+        html += `</div>`;
+    }
+
+    if (data.notes) {
+        html += `<div class="result-section"><div class="clinical-card" style="padding:12px 16px;font-size:0.9rem;">${escapeHtml(data.notes)}</div></div>`;
+    }
+
+    if (!data.risk_level && !data.risk_factors) {
+        // Fallback for unstructured response
+        const txt = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+        html += `<div class="result-section"><div class="result-text">${formatAiText(txt)}</div></div>`;
     }
 
     if (selectedPatient) {
@@ -1292,11 +1407,43 @@ function renderTranslatorResult(container, data) {
         </div>
     `;
 
-    const content = data.response || data.translation || data.analysis || data;
-    if (typeof content === 'string') {
-        html += `<div class="result-section"><div class="result-text">${formatAiText(content)}</div></div>`;
+    if (data.clinical_translation) {
+        html += `<div class="result-section"><div class="result-section-title">Clinical Translation</div>
+            <div class="clinical-card" style="padding:16px;font-size:1rem;border-left:4px solid var(--brand-primary);">${escapeHtml(data.clinical_translation)}</div>
+        </div>`;
+
+        if (data.medical_terms && data.medical_terms.length > 0) {
+            html += `<div class="result-section"><div class="result-section-title">Medical Term Mapping</div>
+                <table class="data-table" style="width:100%;"><thead><tr><th>Patient Said</th><th>Clinical Term</th><th>Explanation</th></tr></thead><tbody>`;
+            data.medical_terms.forEach(t => {
+                html += `<tr><td>${escapeHtml(t.patient_said || '')}</td><td><strong>${escapeHtml(t.clinical_term || '')}</strong></td><td>${escapeHtml(t.explanation || '')}</td></tr>`;
+            });
+            html += `</tbody></table></div>`;
+        }
+
+        if (data.suggested_questions && data.suggested_questions.length > 0) {
+            html += `<div class="result-section"><div class="result-section-title">Follow-up Questions to Ask</div>`;
+            data.suggested_questions.forEach((q, i) => {
+                html += `<div style="padding:6px 12px;background:var(--bg-card);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;font-size:0.9rem;">${i + 1}. ${escapeHtml(q)}</div>`;
+            });
+            html += `</div>`;
+        }
+
+        if (data.possible_conditions_mentioned && data.possible_conditions_mentioned.length > 0) {
+            html += `<div class="result-section"><div class="result-section-title">Conditions Mentioned</div>
+                <div style="display:flex;flex-wrap:wrap;gap:6px;">`;
+            data.possible_conditions_mentioned.forEach(c => {
+                html += `<span style="padding:4px 10px;background:var(--brand-primary);color:white;border-radius:12px;font-size:0.8rem;">${escapeHtml(c)}</span>`;
+            });
+            html += `</div></div>`;
+        }
+
+        if (data.notes) {
+            html += `<div class="result-section"><div class="clinical-card" style="padding:12px 16px;font-size:0.9rem;">${escapeHtml(data.notes)}</div></div>`;
+        }
     } else {
-        html += `<div class="result-section"><div class="result-text">${formatAiText(JSON.stringify(content, null, 2))}</div></div>`;
+        const txt = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        html += `<div class="result-section"><div class="result-text">${formatAiText(txt)}</div></div>`;
     }
 
     html += `
