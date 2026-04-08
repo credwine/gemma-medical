@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemma Medical - Hospital Management System</title>
+    <meta name="description" content="AI-powered hospital management system with clinical decision support. Powered by Gemma 4 running locally.">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Gemma Medical - Hospital Management System">
+    <meta property="og:description" content="Clinical EHR with embedded AI. Powered by Gemma 4. 100% offline, 100% private.">
+    <meta property="og:type" content="website">
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#059669">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Gemma Medical">
+    <link rel="apple-touch-icon" href="/assets/icon-192.svg">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <!-- Skip Navigation Link (Accessibility) -->
+    <a href="#main-content" class="sr-only" style="position:absolute;top:-40px;left:0;background:var(--primary);color:white;padding:8px 16px;z-index:9999;transition:top 0.2s;" onfocus="this.style.top='0'" onblur="this.style.top='-40px'">Skip to main content</a>
+
+    <!-- ============================================
+         SIDEBAR
+         ============================================ -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">
+                <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" class="sidebar-logo-icon">
+                    <circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2" opacity="0.3"/>
+                    <rect x="13" y="8" width="6" height="16" rx="1" fill="currentColor"/>
+                    <rect x="8" y="13" width="16" height="6" rx="1" fill="currentColor"/>
+                </svg>
+                <div class="sidebar-brand">
+                    <span class="sidebar-title">Gemma Medical</span>
+                    <span class="sidebar-subtitle">Hospital Management</span>
+                </div>
+            </div>
+            <div class="sidebar-status" id="sidebarStatus">
+                <span class="status-dot status-dot-checking"></span>
+                <span class="status-label">Checking Gemma 4...</span>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav" id="sidebarNav">
+            <a href="#" class="nav-item active" data-page="dashboard" onclick="switchPage('dashboard');return false;">
+                <i data-lucide="layout-dashboard"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-item" data-page="patients" onclick="switchPage('patients');return false;">
+                <i data-lucide="users"></i>
+                <span>Patients</span>
+            </a>
+            <a href="#" class="nav-item" data-page="clinic" onclick="switchPage('clinic');return false;">
+                <i data-lucide="stethoscope"></i>
+                <span>Clinic Copilot</span>
+                <span class="nav-badge">AI</span>
+            </a>
+            <a href="#" class="nav-item" data-page="drugs" onclick="switchPage('drugs');return false;">
+                <i data-lucide="pill"></i>
+                <span>Drug Checker</span>
+                <span class="nav-badge">AI</span>
+            </a>
+            <a href="#" class="nav-item" data-page="maternal" onclick="switchPage('maternal');return false;">
+                <i data-lucide="heart-pulse"></i>
+                <span>Maternal Health</span>
+                <span class="nav-badge">AI</span>
+            </a>
+            <a href="#" class="nav-item" data-page="translator" onclick="switchPage('translator');return false;">
+                <i data-lucide="languages"></i>
+                <span>Translator</span>
+                <span class="nav-badge">AI</span>
+            </a>
+
+            <div class="nav-divider"></div>
+
+            <a href="#" class="nav-item" data-page="settings" onclick="switchPage('settings');return false;">
+                <i data-lucide="settings"></i>
+                <span>Settings</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="sidebar-badge">
+                <i data-lucide="shield-check"></i>
+                <span>100% Offline</span>
+            </div>
+            <div class="sidebar-badge sidebar-badge-ai" id="gemmaReadyBadge">
+                <i data-lucide="cpu"></i>
+                <span>Gemma 4 Ready</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="mobile-nav" id="mobileNav">
+        <a href="#" class="mobile-nav-item active" data-page="dashboard" onclick="switchPage('dashboard');return false;">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Dashboard</span>
+        </a>
+        <a href="#" class="mobile-nav-item" data-page="patients" onclick="switchPage('patients');return false;">
+            <i data-lucide="users"></i>
+            <span>Patients</span>
+        </a>
+        <a href="#" class="mobile-nav-item" data-page="clinic" onclick="switchPage('clinic');return false;">
+            <i data-lucide="stethoscope"></i>
+            <span>Clinic</span>
+        </a>
+        <a href="#" class="mobile-nav-item" data-page="drugs" onclick="switchPage('drugs');return false;">
+            <i data-lucide="pill"></i>
+            <span>Drugs</span>
+        </a>
+        <a href="#" class="mobile-nav-item" data-page="maternal" onclick="switchPage('maternal');return false;">
+            <i data-lucide="heart-pulse"></i>
+            <span>Maternal</span>
+        </a>
+    </nav>
+
+    <!-- ============================================
+         MAIN CONTENT AREA
+         ============================================ -->
+    <div class="main-wrapper" id="mainWrapper">
+        <!-- Top Bar -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <button class="topbar-menu-btn" id="mobileMenuBtn" onclick="toggleMobileSidebar()">
+                    <i data-lucide="menu"></i>
+                </button>
+                <div class="breadcrumb" id="breadcrumb">
+                    <span class="breadcrumb-root">Gemma Medical</span>
+                    <i data-lucide="chevron-right" class="breadcrumb-sep"></i>
+                    <span class="breadcrumb-current" id="breadcrumbCurrent">Dashboard</span>
+                </div>
+            </div>
+            <div class="topbar-right">
+                <div class="topbar-search">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="globalSearch" class="search-input" placeholder="Search patients, records..." onkeyup="handleGlobalSearch(event)">
+                </div>
+                <select id="languageSelector" class="topbar-select" onchange="changeLanguage(this.value)">
+                    <option value="en">EN</option>
+                    <option value="es">ES</option>
+                    <option value="fr">FR</option>
+                    <option value="sw">SW</option>
+                    <option value="hi">HI</option>
+                    <option value="ar">AR</option>
+                </select>
+                <button class="topbar-btn" onclick="toggleTheme()" title="Toggle dark mode">
+                    <i data-lucide="moon" class="theme-icon-dark"></i>
+                    <i data-lucide="sun" class="theme-icon-light" style="display:none;"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="content" id="main-content">
+
+            <!-- ============================================
+                 DASHBOARD PAGE
+                 ============================================ -->
+            <div class="page active" id="page-dashboard">
+                <!-- Stats Row -->
+                <div class="stats-row" id="dashboardStats">
+                    <div class="stat-card">
+                        <div class="stat-card-icon stat-card-icon-blue">
+                            <i data-lucide="users"></i>
+                        </div>
+                        <div class="stat-card-body">
+                            <span class="stat-card-value" id="statPatients">--</span>
+                            <span class="stat-card-label">Total Patients</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon stat-card-icon-green">
+                            <i data-lucide="calendar-check"></i>
+                        </div>
+                        <div class="stat-card-body">
+                            <span class="stat-card-value" id="statVisits">--</span>
+                            <span class="stat-card-label">Visits Today</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon stat-card-icon-purple">
+                            <i data-lucide="brain"></i>
+                        </div>
+                        <div class="stat-card-body">
+                            <span class="stat-card-value" id="statAI">--</span>
+                            <span class="stat-card-label">AI Consultations</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-card-icon stat-card-icon-red">
+                            <i data-lucide="alert-triangle"></i>
+                        </div>
+                        <div class="stat-card-body">
+                            <span class="stat-card-value" id="statAlerts">--</span>
+                            <span class="stat-card-label">Active Alerts</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="section-header">
+                    <h2>Quick Actions</h2>
+                </div>
+                <div class="quick-actions">
+                    <button class="quick-action-btn" onclick="switchPage('patients');setTimeout(()=>openPatientForm(),100);">
+                        <i data-lucide="user-plus"></i>
+                        <span>New Patient</span>
+                    </button>
+                    <button class="quick-action-btn" onclick="switchPage('patients')">
+                        <i data-lucide="calendar-plus"></i>
+                        <span>New Visit</span>
+                    </button>
+                    <button class="quick-action-btn" onclick="switchPage('clinic')">
+                        <i data-lucide="stethoscope"></i>
+                        <span>Run Diagnosis</span>
+                    </button>
+                    <button class="quick-action-btn" onclick="switchPage('drugs')">
+                        <i data-lucide="pill"></i>
+                        <span>Drug Interactions</span>
+                    </button>
+                </div>
+
+                <!-- Two-column: Recent Activity + AI Insights -->
+                <div class="dashboard-grid">
+                    <div class="dashboard-card">
+                        <div class="card-header">
+                            <h3><i data-lucide="clock"></i> Recent Activity</h3>
+                            <button class="btn-text" onclick="switchPage('patients')">View All</button>
+                        </div>
+                        <div class="table-wrap">
+                            <table class="data-table" id="recentActivityTable">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Patient</th>
+                                        <th>Complaint</th>
+                                        <th>Diagnosis</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentActivityBody">
+                                    <tr>
+                                        <td colspan="4" class="table-empty">Loading recent activity...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-card dashboard-card-ai">
+                        <div class="card-header">
+                            <h3><i data-lucide="bot"></i> Ask Gemma</h3>
+                            <span class="ai-inline-badge">Powered by Gemma 4</span>
+                        </div>
+                        <div class="ai-quick-chat">
+                            <div class="ai-quick-messages" id="dashboardAiMessages">
+                                <div class="ai-quick-msg ai-quick-bot">
+                                    Ask me anything about symptoms, medications, clinical guidelines, or patient management.
+                                </div>
+                            </div>
+                            <div class="ai-quick-input">
+                                <input type="text" id="dashboardAiInput" placeholder="Ask a medical question..." onkeydown="if(event.key==='Enter')sendDashboardAi()">
+                                <button class="btn-icon-primary" onclick="sendDashboardAi()">
+                                    <i data-lucide="send"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================
+                 PATIENTS PAGE
+                 ============================================ -->
+            <div class="page" id="page-patients">
+                <!-- Patient List View -->
+                <div id="patientListView">
+                    <div class="page-toolbar">
+                        <div class="toolbar-left">
+                            <div class="toolbar-search">
+                                <i data-lucide="search"></i>
+                                <input type="text" id="patientSearch" placeholder="Search patients by name, ID, or location..." oninput="searchPatients(this.value)">
+                            </div>
+                        </div>
+                        <button class="btn-primary" onclick="openPatientForm()">
+                            <i data-lucide="user-plus"></i>
+                            Register New Patient
+                        </button>
+                    </div>
+
+                    <div class="table-wrap">
+                        <table class="data-table" id="patientsTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Name</th>
+                                    <th>Age</th>
+                                    <th>Sex</th>
+                                    <th>Last Visit</th>
+                                    <th>Conditions</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patientsBody">
+                                <tr>
+                                    <td colspan="7" class="table-empty">Loading patients...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Patient Registration Form (hidden by default) -->
+                <div id="patientFormView" class="form-panel" style="display:none;">
+                    <div class="form-header">
+                        <button class="btn-ghost" onclick="closePatientForm()">
+                            <i data-lucide="arrow-left"></i> Back to Patients
+                        </button>
+                        <h2 id="patientFormTitle">Register New Patient</h2>
+                    </div>
+                    <form id="patientForm" class="form-grid" onsubmit="submitPatientForm(event)">
+                        <input type="hidden" id="patientEditId" value="">
+                        <div class="form-group">
+                            <label for="pfFirstName">First Name *</label>
+                            <input type="text" id="pfFirstName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pfLastName">Last Name *</label>
+                            <input type="text" id="pfLastName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="pfDob">Date of Birth</label>
+                            <input type="date" id="pfDob">
+                        </div>
+                        <div class="form-group">
+                            <label for="pfSex">Sex *</label>
+                            <select id="pfSex" required>
+                                <option value="">Select</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="pfBloodType">Blood Type</label>
+                            <select id="pfBloodType">
+                                <option value="">Unknown</option>
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                                <option value="O+">O+</option>
+                                <option value="O-">O-</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="pfAddress">Village / Address</label>
+                            <input type="text" id="pfAddress">
+                        </div>
+                        <div class="form-group form-group-full">
+                            <label for="pfAllergies">Allergies (comma-separated)</label>
+                            <input type="text" id="pfAllergies" placeholder="e.g., Penicillin, Sulfa drugs">
+                        </div>
+                        <div class="form-group form-group-full">
+                            <label for="pfConditions">Chronic Conditions (comma-separated)</label>
+                            <input type="text" id="pfConditions" placeholder="e.g., Hypertension, Diabetes Type 2">
+                        </div>
+                        <div class="form-group">
+                            <label for="pfEmergencyName">Emergency Contact Name</label>
+                            <input type="text" id="pfEmergencyName">
+                        </div>
+                        <div class="form-group">
+                            <label for="pfEmergencyPhone">Emergency Contact Phone</label>
+                            <input type="tel" id="pfEmergencyPhone">
+                        </div>
+                        <div class="form-group form-group-full">
+                            <label for="pfNotes">Notes</label>
+                            <textarea id="pfNotes" rows="3"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn-ghost" onclick="closePatientForm()">Cancel</button>
+                            <button type="submit" class="btn-primary" id="patientFormSubmitBtn">
+                                <i data-lucide="save"></i> Register Patient
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Patient Detail View (hidden by default) -->
+                <div id="patientDetailView" class="detail-panel" style="display:none;">
+                    <div class="detail-header">
+                        <button class="btn-ghost" onclick="closePatientDetail()">
+                            <i data-lucide="arrow-left"></i> Back to Patients
+                        </button>
+                        <div class="detail-actions">
+                            <button class="btn-primary" onclick="runAiAssessmentForPatient()">
+                                <i data-lucide="brain"></i> Run AI Assessment
+                            </button>
+                            <button class="btn-ghost" onclick="editCurrentPatient()">
+                                <i data-lucide="edit"></i> Edit
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="patient-profile" id="patientProfile">
+                        <!-- Filled dynamically -->
+                    </div>
+
+                    <div class="patient-tabs">
+                        <button class="ptab active" data-ptab="visits" onclick="switchPatientTab('visits')">Visit History</button>
+                        <button class="ptab" data-ptab="medications" onclick="switchPatientTab('medications')">Medications</button>
+                        <button class="ptab" data-ptab="ai-history" onclick="switchPatientTab('ai-history')">AI Assessments</button>
+                    </div>
+
+                    <div class="ptab-content active" id="ptab-visits">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Complaint</th>
+                                    <th>Diagnosis</th>
+                                    <th>Treatment</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patientVisitsBody">
+                                <tr><td colspan="4" class="table-empty">No visits recorded</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="ptab-content" id="ptab-medications">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Medication</th>
+                                    <th>Dosage</th>
+                                    <th>Frequency</th>
+                                    <th>Start Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="patientMedsBody">
+                                <tr><td colspan="5" class="table-empty">No medications recorded</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="ptab-content" id="ptab-ai-history">
+                        <div id="patientAiHistory" class="ai-history-list">
+                            <p class="table-empty">No AI assessments recorded</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ============================================
+                 CLINIC COPILOT PAGE
+                 ============================================ -->
+            <div class="page" id="page-clinic">
+                <div class="tool-header">
+                    <div class="tool-header-text">
+                        <h2>Clinic Copilot</h2>
+                        <p>AI-powered differential diagnosis. Gemma 4 analyzes symptoms in real-time as you type.</p>
+                    </div>
+                    <span class="ai-inline-badge">Powered by Gemma 4</span>
+                </div>
+
+                <div class="tool-layout">
+                    <div class="tool-input-panel">
+                        <div class="form-group">
+                            <label for="clinicPatientSelect">Link to Patient (optional)</label>
+                            <select id="clinicPatientSelect" onchange="onClinicPatientSelect(this.value)">
+                                <option value="">-- No patient linked --</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="clinicAge">Age Group</label>
+                                <select id="clinicAge">
+                                    <option value="">Select age group</option>
+                                    <option value="infant_0_1">Infant (0-1 yr)</option>
+                                    <option value="child_1_5">Child (1-5 yr)</option>
+                                    <option value="child_5_12">Child (5-12 yr)</option>
+                                    <option value="teen_13_17">Teen (13-17 yr)</option>
+                                    <option value="adult_18_40">Adult (18-40 yr)</option>
+                                    <option value="adult_40_60">Adult (40-60 yr)</option>
+                                    <option value="elderly_60">Elderly (60+ yr)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="clinicSex">Sex</label>
+                                <select id="clinicSex">
+                                    <option value="">Select sex</option>
+                                    <option value="male">Male</option>
+                                    <option value="female">Female</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="clinicSymptoms">Symptoms Description</label>
+                            <textarea id="clinicSymptoms" rows="6" placeholder="Describe the patient's symptoms in detail...&#10;&#10;Example: Patient presents with high fever for 3 days, severe headache, joint pain, and a rash on the trunk. Reports recent mosquito bites."></textarea>
+                            <div class="typing-indicator" id="clinicTypingIndicator" style="display:none;">
+                                <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+                                <span>Gemma is analyzing...</span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Photo (optional)</label>
+                            <div class="upload-row">
+                                <input type="file" id="clinicImage" accept="image/*" style="display:none" onchange="handleClinicImage(event)">
+                                <input type="file" id="clinicCamera" accept="image/*" capture="environment" style="display:none" onchange="handleClinicImage(event)">
+                                <button class="btn-outline" onclick="document.getElementById('clinicCamera').click()">
+                                    <i data-lucide="camera"></i> Take Photo
+                                </button>
+                                <button class="btn-outline" onclick="document.getElementById('clinicImage').click()">
+                                    <i data-lucide="upload"></i> Upload
+                                </button>
+                            </div>
+                            <div id="clinicImagePreview" class="image-preview" style="display:none;">
+                                <img id="clinicPreviewImg">
+                                <button class="btn-ghost-sm" onclick="clearClinicImage()"><i data-lucide="x"></i></button>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary btn-lg" onclick="runClinic()" id="clinicBtn">
+                                <i data-lucide="stethoscope"></i> Analyze with Gemma 4
+                            </button>
+                            <button class="btn-ghost" onclick="clearClinic()">
+                                <i data-lucide="trash-2"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="tool-result-panel" id="clinicResult">
+                        <div class="result-empty">
+                            <i data-lucide="stethoscope"></i>
+                            <h3>Diagnosis Results</h3>
+                            <p>Enter symptoms and click "Analyze with Gemma 4" to receive a differential diagnosis.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="medical-disclaimer">
+                    <i data-lucide="alert-triangle"></i>
+                    <span>AI-generated guidance only. Does not replace professional medical advice. Always consult a qualified healthcare provider.</span>
+                </div>
+            </div>
+
+            <!-- ============================================
+                 DRUG CHECKER PAGE
+                 ============================================ -->
+            <div class="page" id="page-drugs">
+                <div class="tool-header">
+                    <div class="tool-header-text">
+                        <h2>Drug Interaction Checker</h2>
+                        <p>Check for dangerous drug interactions, contraindications, and dosing concerns.</p>
+                    </div>
+                    <span class="ai-inline-badge">Powered by Gemma 4</span>
+                </div>
+
+                <div class="tool-layout">
+                    <div class="tool-input-panel">
+                        <div class="form-group">
+                            <label for="drugPatientSelect">Link to Patient (auto-loads medications)</label>
+                            <select id="drugPatientSelect" onchange="onDrugPatientSelect(this.value)">
+                                <option value="">-- No patient linked --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="drugMedications">Medications (one per line)</label>
+                            <textarea id="drugMedications" rows="6" placeholder="Enter medications, one per line...&#10;&#10;Example:&#10;Metformin 500mg&#10;Lisinopril 10mg&#10;Ibuprofen 400mg&#10;Warfarin 5mg"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="drugConditions">Patient Conditions (optional)</label>
+                            <textarea id="drugConditions" rows="2" placeholder="e.g., diabetes, hypertension, pregnancy, kidney disease"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>Scan Label (optional)</label>
+                            <div class="upload-row">
+                                <input type="file" id="drugImage" accept="image/*" style="display:none" onchange="handleDrugImage(event)">
+                                <input type="file" id="drugCamera" accept="image/*" capture="environment" style="display:none" onchange="handleDrugImage(event)">
+                                <button class="btn-outline" onclick="document.getElementById('drugCamera').click()">
+                                    <i data-lucide="camera"></i> Scan Label
+                                </button>
+                                <button class="btn-outline" onclick="document.getElementById('drugImage').click()">
+                                    <i data-lucide="upload"></i> Upload
+                                </button>
+                            </div>
+                            <div id="drugImagePreview" class="image-preview" style="display:none;">
+                                <img id="drugPreviewImg">
+                                <button class="btn-ghost-sm" onclick="clearDrugImage()"><i data-lucide="x"></i></button>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary btn-lg" onclick="runDrugCheck()" id="drugBtn">
+                                <i data-lucide="shield-alert"></i> Check with Gemma 4
+                            </button>
+                            <button class="btn-ghost" onclick="clearDrugs()">
+                                <i data-lucide="trash-2"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="tool-result-panel" id="drugResult">
+                        <div class="result-empty">
+                            <i data-lucide="pill"></i>
+                            <h3>Interaction Results</h3>
+                            <p>Enter medications and click "Check with Gemma 4" to identify dangerous interactions.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="medical-disclaimer">
+                    <i data-lucide="alert-triangle"></i>
+                    <span>AI-generated guidance only. Does not replace professional medical advice. Always consult a qualified healthcare provider.</span>
+                </div>
+            </div>
+
+            <!-- ============================================
+                 MATERNAL HEALTH PAGE
+                 ============================================ -->
+            <div class="page" id="page-maternal">
+                <div class="tool-header">
+                    <div class="tool-header-text">
+                        <h2>Maternal Health Assessment</h2>
+                        <p>Pregnancy risk assessment with danger sign detection and referral guidance.</p>
+                    </div>
+                    <span class="ai-inline-badge">Powered by Gemma 4</span>
+                </div>
+
+                <div class="tool-layout">
+                    <div class="tool-input-panel">
+                        <div class="form-group">
+                            <label for="maternalPatientSelect">Link to Patient (optional)</label>
+                            <select id="maternalPatientSelect" onchange="onMaternalPatientSelect(this.value)">
+                                <option value="">-- No patient linked --</option>
+                            </select>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="maternalWeeks">Gestational Weeks *</label>
+                                <input type="number" id="maternalWeeks" min="1" max="42" placeholder="e.g., 28">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="maternalSymptoms">Symptoms *</label>
+                            <textarea id="maternalSymptoms" rows="5" placeholder="Describe symptoms...&#10;&#10;Example: Severe headache, blurred vision, swelling in hands and face, upper abdominal pain. Blood pressure reading 160/110."></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="maternalVitals">Vitals</label>
+                            <input type="text" id="maternalVitals" placeholder="BP, temp, pulse (e.g., BP 140/90, Temp 37.5C, Pulse 88)">
+                        </div>
+                        <div class="form-group">
+                            <label for="maternalHistory">Obstetric History</label>
+                            <textarea id="maternalHistory" rows="2" placeholder="e.g., gravida, para, previous complications, existing conditions"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary btn-lg" onclick="runMaternal()" id="maternalBtn">
+                                <i data-lucide="heart-pulse"></i> Assess with Gemma 4
+                            </button>
+                            <button class="btn-ghost" onclick="clearMaternal()">
+                                <i data-lucide="trash-2"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="tool-result-panel" id="maternalResult">
+                        <div class="result-empty">
+                            <i data-lucide="heart-pulse"></i>
+                            <h3>Risk Assessment</h3>
+                            <p>Enter pregnancy details and click "Assess with Gemma 4" to evaluate risk level.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="medical-disclaimer">
+                    <i data-lucide="alert-triangle"></i>
+                    <span>AI-generated guidance only. Does not replace professional medical advice. Always consult a qualified healthcare provider.</span>
+                </div>
+            </div>
+
+            <!-- ============================================
+                 TRANSLATOR PAGE
+                 ============================================ -->
+            <div class="page" id="page-translator">
+                <div class="tool-header">
+                    <div class="tool-header-text">
+                        <h2>Medical Translator</h2>
+                        <p>Real-time translation from local languages to standardized clinical English terminology.</p>
+                    </div>
+                    <span class="ai-inline-badge">Powered by Gemma 4</span>
+                </div>
+
+                <div class="tool-layout">
+                    <div class="tool-input-panel">
+                        <div class="form-group">
+                            <label for="translatorLanguage">Source Language</label>
+                            <select id="translatorLanguage">
+                                <option value="auto">Auto-detect</option>
+                                <option value="sw">Swahili</option>
+                                <option value="hi">Hindi</option>
+                                <option value="ha">Hausa</option>
+                                <option value="yo">Yoruba</option>
+                                <option value="am">Amharic</option>
+                                <option value="bn">Bengali</option>
+                                <option value="tl">Tagalog</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                                <option value="ar">Arabic</option>
+                                <option value="zh">Chinese</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="translatorInput">Patient Description (in their language)</label>
+                            <textarea id="translatorInput" rows="8" placeholder="Enter the patient's description in their language...&#10;&#10;Example (Swahili): Nina homa kali na maumivu ya kichwa. Tumbo langu linaniuma sana na ninahisi kizunguzungu."></textarea>
+                            <div class="typing-indicator" id="translatorTypingIndicator" style="display:none;">
+                                <span class="typing-dot"></span><span class="typing-dot"></span><span class="typing-dot"></span>
+                                <span>Gemma is translating...</span>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-primary btn-lg" onclick="runMedTranslate()" id="translatorBtn">
+                                <i data-lucide="languages"></i> Translate with Gemma 4
+                            </button>
+                            <button class="btn-ghost" onclick="clearTranslator()">
+                                <i data-lucide="trash-2"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="tool-result-panel" id="translatorResult">
+                        <div class="result-empty">
+                            <i data-lucide="languages"></i>
+                            <h3>Translation Results</h3>
+                            <p>Enter a description and click "Translate" to get standardized clinical terminology.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="medical-disclaimer">
+                    <i data-lucide="alert-triangle"></i>
+                    <span>AI-generated guidance only. Does not replace professional medical advice. Always consult a qualified healthcare provider.</span>
+                </div>
+            </div>
+
+            <!-- ============================================
+                 SETTINGS PAGE
+                 ============================================ -->
+            <div class="page" id="page-settings">
+                <div class="settings-container">
+                    <h2>Settings</h2>
+
+                    <div class="settings-section">
+                        <h3>Clinic Information</h3>
+                        <div class="form-grid settings-form">
+                            <div class="form-group">
+                                <label for="settingsClinicName">Clinic Name</label>
+                                <input type="text" id="settingsClinicName" placeholder="e.g., District Health Center" value="">
+                            </div>
+                            <div class="form-group">
+                                <label for="settingsWorkerName">Health Worker Name</label>
+                                <input type="text" id="settingsWorkerName" placeholder="e.g., Dr. Sarah Mwangi" value="">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>AI Model</h3>
+                        <div class="form-group">
+                            <label for="settingsModel">Gemma Model Size</label>
+                            <select id="settingsModel">
+                                <option value="gemma3:4b-it-qat">Gemma 4 -- 4B (Fastest, lower accuracy)</option>
+                                <option value="gemma3:12b-it-qat" selected>Gemma 4 -- 12B (Balanced)</option>
+                                <option value="gemma3:27b-it-qat">Gemma 4 -- 27B (Most accurate, slower)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Language</h3>
+                        <div class="form-group">
+                            <label for="settingsLanguage">Interface Language</label>
+                            <select id="settingsLanguage" onchange="changeLanguage(this.value)">
+                                <option value="en">English</option>
+                                <option value="es">Spanish</option>
+                                <option value="fr">French</option>
+                                <option value="sw">Swahili</option>
+                                <option value="hi">Hindi</option>
+                                <option value="ar">Arabic</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Data Management</h3>
+                        <p class="settings-desc">All data is stored locally on this device. No information is sent to any server.</p>
+                        <div class="settings-actions">
+                            <button class="btn-outline" onclick="exportAllData()">
+                                <i data-lucide="download"></i> Export All Data (JSON)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>About Gemma Medical</h3>
+                        <div class="about-info">
+                            <p><strong>Version:</strong> 1.0.0</p>
+                            <p><strong>AI Engine:</strong> Gemma 4 via Ollama (local)</p>
+                            <p><strong>Privacy:</strong> 100% offline. Zero patient data transmitted.</p>
+                            <p><strong>License:</strong> Apache 2.0</p>
+                            <p><strong>Built by:</strong> Corey Redwine</p>
+                        </div>
+                    </div>
+
+                    <button class="btn-primary" onclick="saveSettings()">
+                        <i data-lucide="save"></i> Save Settings
+                    </button>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- ============================================
+         FLOATING AI ASSISTANT
+         ============================================ -->
+    <div id="aiAssistant" class="ai-assistant collapsed">
+        <button class="ai-fab" onclick="toggleAssistant()" title="Ask Gemma">
+            <i data-lucide="bot"></i>
+            <span class="ai-fab-label">Ask Gemma</span>
+        </button>
+        <div class="ai-panel">
+            <div class="ai-panel-header">
+                <div class="ai-panel-header-left">
+                    <i data-lucide="bot"></i>
+                    <span>Gemma Medical Assistant</span>
+                    <span class="ai-panel-badge">Gemma 4</span>
+                </div>
+                <div class="ai-panel-header-right">
+                    <span class="ai-panel-local">Running Locally</span>
+                    <button class="ai-panel-close" onclick="toggleAssistant()">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="ai-panel-messages" id="aiMessages">
+                <div class="ai-msg ai-msg-system">
+                    I'm your Gemma 4 medical assistant. I run entirely on this device -- your conversations never leave this machine. Ask me anything about symptoms, medications, procedures, or clinical guidelines.
+                </div>
+            </div>
+            <div class="ai-panel-input">
+                <textarea id="aiInput" placeholder="Ask a medical question..." rows="1"></textarea>
+                <button class="ai-panel-send" onclick="sendAiMessage()" title="Send">
+                    <i data-lucide="send"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js', { scope: '/' })
+                    .then(reg => console.log('[Gemma Medical] SW registered:', reg.scope))
+                    .catch(err => console.warn('[Gemma Medical] SW failed:', err));
+            });
+        }
+    </script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

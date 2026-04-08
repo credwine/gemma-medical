@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.env
+.venv/
+venv/
+env/
+
+# Logs
+logs/
+*.log
+
+# Models
+models/
+*.gguf
+*.bin
+
+# Node
+node_modules/
+
+# Docker
+docker-compose.override.yml
+
+# Data
+data/
+*.db
+*.sqlite3
+
+# PyInstaller
+*.spec
+
+# Video
+video_assets/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
