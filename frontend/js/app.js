@@ -797,6 +797,12 @@ async function runClinic() {
     const resultPanel = document.getElementById('clinicResult');
 
     setBtnLoading(btn, true, 'Analyzing...');
+    resultPanel.innerHTML = `
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;">
+            <div style="width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--brand-primary);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:16px;"></div>
+            <div style="font-size:1.1rem;font-weight:600;color:var(--text-primary);margin-bottom:8px;">Analyzing with Gemma 4...</div>
+            <div style="font-size:0.85rem;color:var(--text-secondary);">This may take 20-40 seconds on first analysis. The AI is reasoning through the symptoms locally on your device.</div>
+        </div>`;
 
     try {
         const res = await fetch('/api/clinic', {
@@ -997,6 +1003,7 @@ async function runDrugCheck() {
     const resultPanel = document.getElementById('drugResult');
 
     setBtnLoading(btn, true, 'Checking...');
+    resultPanel.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><div style="width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--brand-primary);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:16px;"></div><div style="font-size:1.1rem;font-weight:600;">Checking interactions with Gemma 4...</div><div style="font-size:0.85rem;color:var(--text-secondary);">This may take 20-40 seconds.</div></div>`;
 
     try {
         const res = await fetch('/api/drugs', {
@@ -1172,6 +1179,7 @@ async function runMaternal() {
     const resultPanel = document.getElementById('maternalResult');
 
     setBtnLoading(btn, true, 'Assessing...');
+    resultPanel.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><div style="width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--brand-primary);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:16px;"></div><div style="font-size:1.1rem;font-weight:600;">Assessing risk with Gemma 4...</div><div style="font-size:0.85rem;color:var(--text-secondary);">This may take 20-40 seconds.</div></div>`;
 
     try {
         const res = await fetch('/api/maternal', {
@@ -1370,6 +1378,7 @@ async function runMedTranslate() {
     const resultPanel = document.getElementById('translatorResult');
 
     setBtnLoading(btn, true, 'Translating...');
+    resultPanel.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;text-align:center;"><div style="width:48px;height:48px;border:4px solid var(--border);border-top-color:var(--brand-primary);border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:16px;"></div><div style="font-size:1.1rem;font-weight:600;">Translating with Gemma 4...</div><div style="font-size:0.85rem;color:var(--text-secondary);">This may take 20-40 seconds.</div></div>`;
 
     try {
         const res = await fetch('/api/medtranslate', {
