@@ -86,6 +86,10 @@
                 <span>Translator</span>
                 <span class="nav-badge">AI</span>
             </a>
+            <a href="#" class="nav-item" data-page="formulary" onclick="switchPage('formulary');return false;">
+                <i data-lucide="book-open"></i>
+                <span>Drug Formulary</span>
+            </a>
 
             <div class="nav-divider"></div>
 
@@ -257,6 +261,58 @@
                         <i data-lucide="pill"></i>
                         <span>Drug Interactions</span>
                     </button>
+                </div>
+
+                <!-- Waiting Room Queue Board -->
+                <div class="section-header" style="display:flex;align-items:center;justify-content:space-between;">
+                    <h2>Waiting Room</h2>
+                    <div style="display:flex;gap:var(--sp-3);">
+                        <button class="btn-primary" onclick="callNextInQueue()">
+                            <i data-lucide="phone-call"></i> Call Next
+                        </button>
+                        <button class="btn-outline" onclick="openAddToQueueModal()">
+                            <i data-lucide="user-plus"></i> Add to Queue
+                        </button>
+                    </div>
+                </div>
+                <div class="queue-board" id="queueBoard">
+                    <div class="table-empty" style="padding:var(--sp-6);text-align:center;color:var(--text-muted);">Loading queue...</div>
+                </div>
+
+                <!-- Add to Queue Modal -->
+                <div class="modal-overlay" id="addQueueModal" style="display:none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Add Patient to Queue</h3>
+                            <button class="btn-ghost-sm" onclick="closeAddToQueueModal()"><i data-lucide="x"></i></button>
+                        </div>
+                        <form onsubmit="submitAddToQueue(event)">
+                            <div class="form-group" style="margin-bottom:var(--sp-4);">
+                                <label for="queuePatientSelect">Patient</label>
+                                <select id="queuePatientSelect" required>
+                                    <option value="">-- Select patient --</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom:var(--sp-4);">
+                                <label for="queuePriority">Triage Priority</label>
+                                <select id="queuePriority" required>
+                                    <option value="1">ESI-1: Resuscitation (Immediate)</option>
+                                    <option value="2">ESI-2: Emergent</option>
+                                    <option value="3" selected>ESI-3: Urgent</option>
+                                    <option value="4">ESI-4: Less Urgent</option>
+                                    <option value="5">ESI-5: Non-Urgent</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="margin-bottom:var(--sp-4);">
+                                <label for="queueReason">Chief Complaint</label>
+                                <input type="text" id="queueReason" placeholder="e.g., Fever, Abdominal pain, Follow-up">
+                            </div>
+                            <div class="form-actions" style="justify-content:flex-end;">
+                                <button type="button" class="btn-ghost" onclick="closeAddToQueueModal()">Cancel</button>
+                                <button type="submit" class="btn-primary"><i data-lucide="user-plus"></i> Add to Queue</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
 
                 <!-- Two-column: Recent Activity + AI Insights -->
@@ -435,6 +491,12 @@
                         <div class="detail-actions">
                             <button class="btn-primary" onclick="runAiAssessmentForPatient()">
                                 <i data-lucide="brain"></i> Run AI Assessment
+                            </button>
+                            <button class="btn-outline" onclick="showPatientIdCard()">
+                                <i data-lucide="qr-code"></i> Print ID Card
+                            </button>
+                            <button class="btn-outline" onclick="openReferralForm()">
+                                <i data-lucide="send"></i> Generate Referral
                             </button>
                             <button class="btn-ghost" onclick="editCurrentPatient()">
                                 <i data-lucide="edit"></i> Edit
@@ -682,10 +744,32 @@
                             <label for="maternalSymptoms">Symptoms *</label>
                             <textarea id="maternalSymptoms" rows="5" placeholder="Describe symptoms...&#10;&#10;Example: Severe headache, blurred vision, swelling in hands and face, upper abdominal pain. Blood pressure reading 160/110."></textarea>
                         </div>
-                        <div class="form-group">
-                            <label for="maternalVitals">Vitals</label>
-                            <input type="text" id="maternalVitals" placeholder="BP, temp, pulse (e.g., BP 140/90, Temp 37.5C, Pulse 88)">
+                        <div class="form-group form-group-full" style="margin-bottom:0;">
+                            <label>Vitals</label>
                         </div>
+                        <div class="form-row" style="grid-template-columns:repeat(3,1fr);gap:var(--sp-3);">
+                            <div class="form-group">
+                                <label for="maternalBpSys" style="font-size:var(--text-xs);">BP Systolic</label>
+                                <input type="number" id="maternalBpSys" placeholder="mmHg" data-vital-type="bp_systolic">
+                            </div>
+                            <div class="form-group">
+                                <label for="maternalBpDia" style="font-size:var(--text-xs);">BP Diastolic</label>
+                                <input type="number" id="maternalBpDia" placeholder="mmHg" data-vital-type="bp_diastolic">
+                            </div>
+                            <div class="form-group">
+                                <label for="maternalTemp" style="font-size:var(--text-xs);">Temp (C)</label>
+                                <input type="number" id="maternalTemp" step="0.1" placeholder="C" data-vital-type="temperature_c">
+                            </div>
+                            <div class="form-group">
+                                <label for="maternalPulse" style="font-size:var(--text-xs);">Pulse</label>
+                                <input type="number" id="maternalPulse" placeholder="bpm" data-vital-type="pulse_rate">
+                            </div>
+                            <div class="form-group">
+                                <label for="maternalRR" style="font-size:var(--text-xs);">Resp. Rate</label>
+                                <input type="number" id="maternalRR" placeholder="/min" data-vital-type="respiratory_rate">
+                            </div>
+                        </div>
+                        <input type="hidden" id="maternalVitals" value="">
                         <div class="form-group">
                             <label for="maternalHistory">Obstetric History</label>
                             <textarea id="maternalHistory" rows="2" placeholder="e.g., gravida, para, previous complications, existing conditions"></textarea>
@@ -852,7 +936,151 @@
                 </div>
             </div>
 
+            <!-- ============================================
+                 DRUG FORMULARY PAGE
+                 ============================================ -->
+            <div class="page" id="page-formulary">
+                <div class="tool-header">
+                    <div class="tool-header-text">
+                        <h2>WHO Essential Medicines Formulary</h2>
+                        <p>Offline drug reference based on the WHO Model List of Essential Medicines.</p>
+                    </div>
+                </div>
+
+                <div class="page-toolbar" style="margin-bottom:var(--sp-5);">
+                    <div class="toolbar-left">
+                        <div class="toolbar-search">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="formularySearch" placeholder="Search drugs by name, category, or indication..." oninput="searchFormulary(this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="formulary-grid" id="formularyGrid">
+                    <div class="table-empty" style="grid-column:1/-1;padding:var(--sp-8);text-align:center;">Loading formulary...</div>
+                </div>
+
+                <!-- Drug Detail Modal -->
+                <div class="modal-overlay" id="drugDetailModal" style="display:none;">
+                    <div class="modal-content modal-content-lg">
+                        <div class="modal-header">
+                            <h3 id="drugDetailTitle">Drug Details</h3>
+                            <button class="btn-ghost-sm" onclick="closeDrugDetailModal()"><i data-lucide="x"></i></button>
+                        </div>
+                        <div id="drugDetailBody" style="max-height:70vh;overflow-y:auto;"></div>
+                    </div>
+                </div>
+            </div>
+
         </main>
+
+        <!-- ============================================
+             REFERRAL LETTER MODAL
+             ============================================ -->
+        <div class="modal-overlay" id="referralModal" style="display:none;">
+            <div class="modal-content modal-content-lg">
+                <div class="modal-header">
+                    <h3>Generate Referral Letter</h3>
+                    <button class="btn-ghost-sm" onclick="closeReferralModal()"><i data-lucide="x"></i></button>
+                </div>
+                <div id="referralFormContainer">
+                    <form onsubmit="submitReferral(event)" class="referral-form">
+                        <div class="form-group" style="margin-bottom:var(--sp-4);">
+                            <label for="referralVisitSelect">Link to Visit (optional)</label>
+                            <select id="referralVisitSelect">
+                                <option value="">-- Select a visit --</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin-bottom:var(--sp-4);">
+                            <label for="referralReason">Reason for Referral *</label>
+                            <textarea id="referralReason" rows="3" required placeholder="e.g., Patient requires specialist evaluation for persistent symptoms..."></textarea>
+                        </div>
+                        <div class="form-row" style="margin-bottom:var(--sp-4);">
+                            <div class="form-group">
+                                <label for="referralUrgency">Urgency</label>
+                                <select id="referralUrgency">
+                                    <option value="routine">Routine</option>
+                                    <option value="urgent">Urgent</option>
+                                    <option value="emergency">Emergency</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row" style="margin-bottom:var(--sp-4);">
+                            <div class="form-group">
+                                <label for="referralFrom">Referring Facility</label>
+                                <input type="text" id="referralFrom" placeholder="e.g., District Health Center">
+                            </div>
+                            <div class="form-group">
+                                <label for="referralTo">Receiving Facility</label>
+                                <input type="text" id="referralTo" placeholder="e.g., Regional Hospital">
+                            </div>
+                        </div>
+                        <div class="form-actions" style="justify-content:flex-end;">
+                            <button type="button" class="btn-ghost" onclick="closeReferralModal()">Cancel</button>
+                            <button type="submit" class="btn-primary" id="referralSubmitBtn">
+                                <i data-lucide="send"></i> Generate with Gemma 4
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div id="referralLetterContainer" style="display:none;">
+                    <div class="referral-letter-content" id="referralLetterContent"></div>
+                    <div class="form-actions" style="justify-content:flex-end;margin-top:var(--sp-4);">
+                        <button class="btn-ghost" onclick="closeReferralModal()">Close</button>
+                        <button class="btn-outline" onclick="openReferralForm()">New Referral</button>
+                        <button class="btn-primary" onclick="printReferralLetter()">
+                            <i data-lucide="printer"></i> Print Letter
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             PATIENT ID CARD MODAL
+             ============================================ -->
+        <div class="modal-overlay" id="idCardModal" style="display:none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Patient ID Card</h3>
+                    <button class="btn-ghost-sm" onclick="closeIdCardModal()"><i data-lucide="x"></i></button>
+                </div>
+                <div class="id-card" id="idCardContent">
+                    <div class="id-card-header">
+                        <div class="id-card-logo">
+                            <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" width="24" height="24">
+                                <circle cx="16" cy="16" r="14" stroke="currentColor" stroke-width="2" opacity="0.3"/>
+                                <rect x="13" y="8" width="6" height="16" rx="1" fill="currentColor"/>
+                                <rect x="8" y="13" width="16" height="6" rx="1" fill="currentColor"/>
+                            </svg>
+                            <span>Gemma Medical</span>
+                        </div>
+                        <span class="id-card-label">PATIENT ID</span>
+                    </div>
+                    <div class="id-card-body">
+                        <div class="id-card-qr" id="idCardQR">
+                            <div class="id-card-photo-placeholder">
+                                <i data-lucide="qr-code"></i>
+                                <span>Loading QR...</span>
+                            </div>
+                        </div>
+                        <div class="id-card-info">
+                            <div class="id-card-name" id="idCardName">--</div>
+                            <div class="id-card-field"><span class="id-card-field-label">DOB:</span> <span id="idCardDOB">--</span></div>
+                            <div class="id-card-field"><span class="id-card-field-label">MRN:</span> <span id="idCardMRN" class="id-card-mrn">--</span></div>
+                            <div class="id-card-field"><span class="id-card-field-label">Blood:</span> <span id="idCardBlood">--</span></div>
+                            <div class="id-card-field"><span class="id-card-field-label">Allergies:</span> <span id="idCardAllergies">--</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-actions" style="justify-content:center;margin-top:var(--sp-4);">
+                    <button class="btn-ghost" onclick="closeIdCardModal()">Close</button>
+                    <button class="btn-primary" onclick="printIdCard()">
+                        <i data-lucide="printer"></i> Print ID Card
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- ============================================

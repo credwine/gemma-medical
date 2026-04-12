@@ -67,6 +67,7 @@ function switchPage(page) {
         drugs: 'Drug Checker',
         maternal: 'Maternal Health',
         translator: 'Translator',
+        formulary: 'Drug Formulary',
         settings: 'Settings',
     };
     const bc = document.getElementById('breadcrumbCurrent');
@@ -79,6 +80,7 @@ function switchPage(page) {
     if (page === 'dashboard') loadDashboard();
     if (page === 'patients') loadPatients();
     if (page === 'clinic' || page === 'drugs' || page === 'maternal') populatePatientSelectors();
+    if (page === 'formulary') loadFormulary();
 
     // Reset sub-views for patients
     if (page === 'patients') {
@@ -215,6 +217,9 @@ async function loadDashboard() {
 
         // Populate recent activity
         renderRecentActivity(recentVisits.slice(0, 10));
+
+        // Load queue board
+        loadQueueBoard();
 
     } catch (e) {
         console.warn('[Dashboard] Load error:', e);
@@ -1168,7 +1173,18 @@ function clearDrugImage() {
 async function runMaternal() {
     const weeks = parseInt(document.getElementById('maternalWeeks').value);
     const symptoms = document.getElementById('maternalSymptoms').value.trim();
-    const vitals = document.getElementById('maternalVitals').value.trim();
+    // Build vitals string from structured inputs
+    const bpSys = document.getElementById('maternalBpSys') ? document.getElementById('maternalBpSys').value : '';
+    const bpDia = document.getElementById('maternalBpDia') ? document.getElementById('maternalBpDia').value : '';
+    const tempC = document.getElementById('maternalTemp') ? document.getElementById('maternalTemp').value : '';
+    const pulse = document.getElementById('maternalPulse') ? document.getElementById('maternalPulse').value : '';
+    const rr = document.getElementById('maternalRR') ? document.getElementById('maternalRR').value : '';
+    var vitalParts = [];
+    if (bpSys && bpDia) vitalParts.push('BP ' + bpSys + '/' + bpDia);
+    if (tempC) vitalParts.push('Temp ' + tempC + 'C');
+    if (pulse) vitalParts.push('Pulse ' + pulse);
+    if (rr) vitalParts.push('RR ' + rr);
+    const vitals = vitalParts.join(', ') || document.getElementById('maternalVitals').value.trim();
     const history = document.getElementById('maternalHistory').value.trim();
 
     if (!symptoms) {
@@ -1356,6 +1372,13 @@ function clearMaternal() {
     document.getElementById('maternalWeeks').value = '';
     document.getElementById('maternalSymptoms').value = '';
     document.getElementById('maternalVitals').value = '';
+    if (document.getElementById('maternalBpSys')) document.getElementById('maternalBpSys').value = '';
+    if (document.getElementById('maternalBpDia')) document.getElementById('maternalBpDia').value = '';
+    if (document.getElementById('maternalTemp')) document.getElementById('maternalTemp').value = '';
+    if (document.getElementById('maternalPulse')) document.getElementById('maternalPulse').value = '';
+    if (document.getElementById('maternalRR')) document.getElementById('maternalRR').value = '';
+    // Clear vital alert badges
+    document.querySelectorAll('.vital-alert-badge').forEach(function(el) { el.remove(); });
     document.getElementById('maternalHistory').value = '';
     document.getElementById('maternalPatientSelect').value = '';
     document.getElementById('maternalResult').innerHTML = `
@@ -1933,4 +1956,677 @@ function formatVitalsLine(vitals) {
     if (vitals.respiratory_rate) parts.push('RR: ' + vitals.respiratory_rate);
     if (vitals.weight_kg) parts.push('Wt: ' + vitals.weight_kg + ' kg');
     return parts.join(' | ');
+}
+
+// ============================================
+// REAL-TIME VITAL ALERTS (Best Practice Alerts)
+// ============================================
+function checkVital(type, value) {
+    if (value === null || value === undefined || value === '' || isNaN(value)) {
+        return { level: 'normal', message: '' };
+    }
+    var v = parseFloat(value);
+
+    switch (type) {
+        case 'bp_systolic':
+            if (v > 180) return { level: 'critical', message: 'CRITICAL: Hypertensive crisis (>' + '180 mmHg)' };
+            if (v < 70) return { level: 'critical', message: 'CRITICAL: Severe hypotension (<70 mmHg)' };
+            if (v > 140) return { level: 'warning', message: 'Elevated BP systolic (>140 mmHg)' };
+            if (v < 90) return { level: 'warning', message: 'Low BP systolic (<90 mmHg)' };
+            return { level: 'normal', message: 'Normal range' };
+
+        case 'bp_diastolic':
+            if (v > 90) return { level: 'warning', message: 'Elevated BP diastolic (>90 mmHg)' };
+            if (v < 60) return { level: 'warning', message: 'Low BP diastolic (<60 mmHg)' };
+            return { level: 'normal', message: 'Normal range' };
+
+        case 'temperature_c':
+            if (v > 40) return { level: 'critical', message: 'CRITICAL: Hyperthermia (>40 C)' };
+            if (v < 34) return { level: 'critical', message: 'CRITICAL: Hypothermia (<34 C)' };
+            if (v > 38.5) return { level: 'warning', message: 'Fever (>38.5 C)' };
+            if (v < 35.5) return { level: 'warning', message: 'Low temperature (<35.5 C)' };
+            return { level: 'normal', message: 'Normal range' };
+
+        case 'pulse_rate':
+            if (v > 130) return { level: 'critical', message: 'CRITICAL: Severe tachycardia (>130 bpm)' };
+            if (v < 40) return { level: 'critical', message: 'CRITICAL: Severe bradycardia (<40 bpm)' };
+            if (v > 100) return { level: 'warning', message: 'Tachycardia (>100 bpm)' };
+            if (v < 50) return { level: 'warning', message: 'Bradycardia (<50 bpm)' };
+            return { level: 'normal', message: 'Normal range' };
+
+        case 'respiratory_rate':
+            if (v > 25) return { level: 'warning', message: 'Tachypnea (>25 breaths/min)' };
+            if (v < 10) return { level: 'warning', message: 'Bradypnea (<10 breaths/min)' };
+            return { level: 'normal', message: 'Normal range' };
+
+        default:
+            return { level: 'normal', message: '' };
+    }
+}
+
+function renderVitalAlert(inputEl, type) {
+    var value = inputEl.value;
+    var result = checkVital(type, value);
+
+    // Remove existing alert badge
+    var existingBadge = inputEl.parentElement.querySelector('.vital-alert-badge');
+    if (existingBadge) existingBadge.remove();
+
+    if (!value || value === '') return;
+
+    var badge = document.createElement('span');
+    badge.className = 'vital-alert-badge vital-alert-' + result.level;
+
+    if (result.level === 'normal') {
+        badge.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+        badge.title = result.message;
+    } else if (result.level === 'warning') {
+        badge.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> <span class="vital-alert-text">' + escapeHtml(result.message) + '</span>';
+    } else if (result.level === 'critical') {
+        badge.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> <span class="vital-alert-text">' + escapeHtml(result.message) + '</span>';
+    }
+
+    inputEl.parentElement.style.position = 'relative';
+    inputEl.parentElement.appendChild(badge);
+}
+
+function initVitalAlertListeners() {
+    var vitalFields = [
+        { id: 'clinicBpSys', type: 'bp_systolic' },
+        { id: 'clinicBpDia', type: 'bp_diastolic' },
+        { id: 'clinicTemp', type: 'temperature_c' },
+        { id: 'clinicPulse', type: 'pulse_rate' },
+        { id: 'clinicRR', type: 'respiratory_rate' },
+        { id: 'maternalBpSys', type: 'bp_systolic' },
+        { id: 'maternalBpDia', type: 'bp_diastolic' },
+        { id: 'maternalTemp', type: 'temperature_c' },
+        { id: 'maternalPulse', type: 'pulse_rate' },
+        { id: 'maternalRR', type: 'respiratory_rate' },
+    ];
+
+    // Also attach to any vital input fields found by data attribute
+    document.querySelectorAll('[data-vital-type]').forEach(function(el) {
+        el.addEventListener('input', function() {
+            renderVitalAlert(el, el.dataset.vitalType);
+        });
+    });
+
+    vitalFields.forEach(function(field) {
+        var el = document.getElementById(field.id);
+        if (el) {
+            el.addEventListener('input', function() {
+                renderVitalAlert(el, field.type);
+            });
+        }
+    });
+}
+
+// Initialize vital alert listeners after DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    // Use MutationObserver to catch dynamically added vital inputs
+    var observer = new MutationObserver(function() {
+        initVitalAlertListeners();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    initVitalAlertListeners();
+});
+
+
+// ============================================
+// DRUG FORMULARY
+// ============================================
+var formularyCache = [];
+
+async function loadFormulary() {
+    try {
+        var res = await fetch('/api/formulary');
+        if (!res.ok) throw new Error('Failed to load formulary');
+        formularyCache = await res.json();
+        renderFormularyGrid(formularyCache);
+    } catch (e) {
+        var grid = document.getElementById('formularyGrid');
+        if (grid) grid.innerHTML = '<div class="table-empty" style="grid-column:1/-1;padding:var(--sp-8);text-align:center;">Could not load formulary</div>';
+    }
+}
+
+function searchFormulary(query) {
+    clearTimeout(APP.debounceTimers.formularySearch);
+    APP.debounceTimers.formularySearch = setTimeout(async function() {
+        if (!query || !query.trim()) {
+            renderFormularyGrid(formularyCache);
+            return;
+        }
+        try {
+            var res = await fetch('/api/formulary/search?q=' + encodeURIComponent(query.trim()));
+            if (res.ok) {
+                var results = await res.json();
+                renderFormularyGrid(results);
+            }
+        } catch (e) {
+            // Fall back to client-side filter
+            var q = query.toLowerCase();
+            var filtered = formularyCache.filter(function(d) {
+                return d.name.toLowerCase().includes(q)
+                    || d.category.toLowerCase().includes(q)
+                    || (d.indications || []).some(function(ind) { return ind.toLowerCase().includes(q); });
+            });
+            renderFormularyGrid(filtered);
+        }
+    }, 200);
+}
+
+function renderFormularyGrid(drugs) {
+    var grid = document.getElementById('formularyGrid');
+    if (!grid) return;
+
+    if (!drugs || !drugs.length) {
+        grid.innerHTML = '<div class="table-empty" style="grid-column:1/-1;padding:var(--sp-8);text-align:center;">No drugs found matching your search.</div>';
+        return;
+    }
+
+    var categoryColors = {
+        'Antibiotic': '#3b82f6',
+        'Antibiotic/Antiprotozoal': '#6366f1',
+        'Analgesic/Antipyretic': '#f59e0b',
+        'NSAID/Analgesic': '#f59e0b',
+        'Antimalarial': '#dc2626',
+        'Rehydration': '#06b6d4',
+        'Micronutrient Supplement': '#10b981',
+        'Hematological': '#ef4444',
+        'Vitamin': '#10b981',
+        'Oxytocic/Prostaglandin': '#ec4899',
+        'Oxytocic': '#ec4899',
+        'Anticonvulsant/Tocolytic': '#8b5cf6',
+        'Benzodiazepine/Anticonvulsant': '#8b5cf6',
+        'Anticonvulsant': '#8b5cf6',
+        'Bronchodilator': '#06b6d4',
+        'Corticosteroid': '#ea580c',
+        'Sympathomimetic': '#dc2626',
+        'Antidiabetic': '#0ea5e9',
+        'Antihypertensive (Calcium Channel Blocker)': '#7c3aed',
+        'Antihypertensive (ACE Inhibitor)': '#7c3aed',
+        'Antihypertensive (Diuretic)': '#7c3aed',
+    };
+
+    grid.innerHTML = drugs.map(function(d) {
+        var color = categoryColors[d.category] || '#64748b';
+        var indication = (d.indications || [])[0] || '';
+        var pregCat = d.pregnancy_category || '--';
+        return '<div class="formulary-card" onclick="showDrugDetail(\'' + escapeHtml(d.id) + '\')">'
+            + '<div class="formulary-card-header">'
+            + '<span class="formulary-card-name">' + escapeHtml(d.name) + '</span>'
+            + '<span class="formulary-card-cat" style="background:' + color + ';">' + escapeHtml(d.category) + '</span>'
+            + '</div>'
+            + '<div class="formulary-card-indication">' + escapeHtml(indication) + '</div>'
+            + '<div class="formulary-card-footer">'
+            + '<span>Preg: ' + escapeHtml(pregCat) + '</span>'
+            + '<span>' + (d.dosage_forms || []).length + ' forms</span>'
+            + '</div>'
+            + '</div>';
+    }).join('');
+}
+
+function showDrugDetail(drugId) {
+    var drug = formularyCache.find(function(d) { return d.id === drugId; });
+    if (!drug) return;
+
+    document.getElementById('drugDetailTitle').textContent = drug.name;
+
+    var html = '<div class="drug-detail">';
+
+    // Category badge
+    html += '<div style="margin-bottom:var(--sp-4);"><span class="formulary-card-cat" style="background:#3b82f6;">' + escapeHtml(drug.category) + '</span>';
+    html += ' <span class="formulary-card-cat" style="background:#f59e0b;color:#1e293b;">Pregnancy: ' + escapeHtml(drug.pregnancy_category || 'N/A') + '</span></div>';
+
+    // Dosage Forms
+    html += '<div class="drug-detail-section"><h4>Dosage Forms</h4><div class="drug-detail-tags">';
+    (drug.dosage_forms || []).forEach(function(f) {
+        html += '<span class="drug-tag">' + escapeHtml(f) + '</span>';
+    });
+    html += '</div></div>';
+
+    // Indications
+    html += '<div class="drug-detail-section"><h4>Indications</h4><ul class="drug-detail-list">';
+    (drug.indications || []).forEach(function(ind) {
+        html += '<li>' + escapeHtml(ind) + '</li>';
+    });
+    html += '</ul></div>';
+
+    // Dosing
+    html += '<div class="drug-detail-section drug-detail-dosing">';
+    html += '<div class="drug-dose-box"><h4>Adult Dose</h4><p>' + escapeHtml(drug.adult_dose || 'N/A') + '</p></div>';
+    html += '<div class="drug-dose-box"><h4>Pediatric Dose</h4><p>' + escapeHtml(drug.pediatric_dose || 'N/A') + '</p></div>';
+    html += '</div>';
+
+    // Contraindications
+    html += '<div class="drug-detail-section"><h4>Contraindications</h4><ul class="drug-detail-list drug-detail-list-danger">';
+    (drug.contraindications || []).forEach(function(c) {
+        html += '<li>' + escapeHtml(c) + '</li>';
+    });
+    html += '</ul></div>';
+
+    // Side Effects
+    html += '<div class="drug-detail-section"><h4>Side Effects</h4><div class="drug-detail-tags">';
+    (drug.side_effects || []).forEach(function(s) {
+        html += '<span class="drug-tag drug-tag-warn">' + escapeHtml(s) + '</span>';
+    });
+    html += '</div></div>';
+
+    // Interactions
+    html += '<div class="drug-detail-section"><h4>Drug Interactions</h4><ul class="drug-detail-list">';
+    (drug.interactions || []).forEach(function(ix) {
+        html += '<li>' + escapeHtml(ix) + '</li>';
+    });
+    html += '</ul></div>';
+
+    // Notes
+    if (drug.notes) {
+        html += '<div class="drug-detail-section drug-detail-notes"><h4>Clinical Notes</h4><p>' + escapeHtml(drug.notes) + '</p></div>';
+    }
+
+    html += '</div>';
+
+    document.getElementById('drugDetailBody').innerHTML = html;
+    document.getElementById('drugDetailModal').style.display = 'flex';
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeDrugDetailModal() {
+    document.getElementById('drugDetailModal').style.display = 'none';
+}
+
+
+// ============================================
+// PATIENT QUEUE BOARD
+// ============================================
+async function loadQueueBoard() {
+    var board = document.getElementById('queueBoard');
+    if (!board) return;
+
+    try {
+        var res = await fetch('/api/queue');
+        if (!res.ok) throw new Error('Failed to load queue');
+        var queue = await res.json();
+        renderQueueBoard(queue);
+    } catch (e) {
+        board.innerHTML = '<div class="table-empty" style="padding:var(--sp-6);text-align:center;color:var(--text-muted);">No patients in queue</div>';
+    }
+
+    // Also populate the patient selector for the add-to-queue modal
+    populateQueuePatientSelector();
+}
+
+function renderQueueBoard(queue) {
+    var board = document.getElementById('queueBoard');
+    if (!board) return;
+
+    if (!queue || !queue.length) {
+        board.innerHTML = '<div class="table-empty" style="padding:var(--sp-6);text-align:center;color:var(--text-muted);">No patients waiting. Queue is empty.</div>';
+        return;
+    }
+
+    var priorityColors = {
+        1: '#dc2626',
+        2: '#ea580c',
+        3: '#f59e0b',
+        4: '#3b82f6',
+        5: '#16a34a',
+    };
+    var priorityLabels = {
+        1: 'ESI-1',
+        2: 'ESI-2',
+        3: 'ESI-3',
+        4: 'ESI-4',
+        5: 'ESI-5',
+    };
+    var priorityNames = {
+        1: 'Resuscitation',
+        2: 'Emergent',
+        3: 'Urgent',
+        4: 'Less Urgent',
+        5: 'Non-Urgent',
+    };
+    var statusIcons = {
+        'waiting': 'clock',
+        'in-progress': 'stethoscope',
+    };
+
+    board.innerHTML = queue.map(function(q) {
+        var color = priorityColors[q.priority] || '#64748b';
+        var esi = priorityLabels[q.priority] || 'ESI-?';
+        var pName = priorityNames[q.priority] || '';
+        var statusIcon = statusIcons[q.status] || 'clock';
+        var waitTime = '';
+        if (q.arrival_time) {
+            var diff = Math.floor((Date.now() - new Date(q.arrival_time).getTime()) / 60000);
+            if (diff < 1) waitTime = 'Just arrived';
+            else if (diff < 60) waitTime = diff + ' min';
+            else waitTime = Math.floor(diff / 60) + 'h ' + (diff % 60) + 'm';
+        }
+        var name = q.patient_name || findPatientName(q.patient_id);
+        var statusBadge = q.status === 'in-progress'
+            ? '<span class="queue-status-badge queue-status-active">In Progress</span>'
+            : '<span class="queue-status-badge queue-status-waiting">Waiting</span>';
+
+        return '<div class="queue-card" style="border-left-color:' + color + ';">'
+            + '<div class="queue-card-header">'
+            + '<span class="queue-card-esi" style="background:' + color + ';">' + esi + '</span>'
+            + '<span class="queue-card-priority">' + escapeHtml(pName) + '</span>'
+            + statusBadge
+            + '</div>'
+            + '<div class="queue-card-body">'
+            + '<div class="queue-card-name">' + escapeHtml(name) + '</div>'
+            + '<div class="queue-card-reason">' + escapeHtml(q.reason || 'No complaint recorded') + '</div>'
+            + '</div>'
+            + '<div class="queue-card-footer">'
+            + '<span class="queue-card-wait"><i data-lucide="' + statusIcon + '" style="width:14px;height:14px;"></i> ' + waitTime + '</span>'
+            + '<div class="queue-card-actions">'
+            + (q.status === 'waiting' ? '<button class="table-btn" onclick="updateQueueStatus(\'' + q.queue_id + '\', \'in-progress\')">Call</button>' : '')
+            + '<button class="table-btn" onclick="updateQueueStatus(\'' + q.queue_id + '\', \'completed\')">Done</button>'
+            + '<button class="table-btn table-btn-danger" onclick="removeFromQueue(\'' + q.queue_id + '\')">Remove</button>'
+            + '</div>'
+            + '</div>'
+            + '</div>';
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+}
+
+async function populateQueuePatientSelector() {
+    if (!APP.patients.length) {
+        try {
+            var res = await fetch('/api/patients');
+            if (res.ok) APP.patients = await res.json();
+        } catch (e) { /* silent */ }
+    }
+
+    var sel = document.getElementById('queuePatientSelect');
+    if (!sel) return;
+    var current = sel.value;
+    sel.innerHTML = '<option value="">-- Select patient --</option>';
+    APP.patients.forEach(function(p) {
+        var opt = document.createElement('option');
+        opt.value = p.patient_id;
+        opt.textContent = p.first_name + ' ' + p.last_name + ' (' + (p.patient_id || '').substring(0, 8) + ')';
+        sel.appendChild(opt);
+    });
+    if (current) sel.value = current;
+}
+
+function openAddToQueueModal() {
+    populateQueuePatientSelector();
+    document.getElementById('addQueueModal').style.display = 'flex';
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeAddToQueueModal() {
+    document.getElementById('addQueueModal').style.display = 'none';
+}
+
+async function submitAddToQueue(e) {
+    e.preventDefault();
+    var patientId = document.getElementById('queuePatientSelect').value;
+    var priority = parseInt(document.getElementById('queuePriority').value);
+    var reason = document.getElementById('queueReason').value.trim();
+
+    if (!patientId) {
+        showToast('Please select a patient', 'warning');
+        return;
+    }
+
+    var patient = APP.patients.find(function(p) { return p.patient_id === patientId; });
+    var patientName = patient ? (patient.first_name + ' ' + patient.last_name) : '';
+
+    try {
+        var res = await fetch('/api/queue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                patient_id: patientId,
+                patient_name: patientName,
+                priority: priority,
+                reason: reason,
+            }),
+        });
+        if (!res.ok) throw new Error('Failed to add to queue');
+        showToast('Patient added to queue', 'success');
+        closeAddToQueueModal();
+        loadQueueBoard();
+    } catch (e) {
+        showToast('Error: ' + e.message, 'error');
+    }
+}
+
+async function callNextInQueue() {
+    try {
+        var res = await fetch('/api/queue/call-next', { method: 'POST' });
+        if (!res.ok) throw new Error('Failed');
+        var data = await res.json();
+        if (data.message) {
+            showToast(data.message, 'info');
+        } else {
+            showToast('Called: ' + (data.patient_name || 'Next patient'), 'success');
+        }
+        loadQueueBoard();
+    } catch (e) {
+        showToast('Error calling next patient', 'error');
+    }
+}
+
+async function updateQueueStatus(queueId, status) {
+    try {
+        var res = await fetch('/api/queue/' + queueId + '/status', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: status }),
+        });
+        if (!res.ok) throw new Error('Failed');
+        loadQueueBoard();
+    } catch (e) {
+        showToast('Error updating queue', 'error');
+    }
+}
+
+async function removeFromQueue(queueId) {
+    try {
+        var res = await fetch('/api/queue/' + queueId, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed');
+        loadQueueBoard();
+    } catch (e) {
+        showToast('Error removing from queue', 'error');
+    }
+}
+
+
+// ============================================
+// REFERRAL LETTER GENERATOR
+// ============================================
+function openReferralForm() {
+    if (!APP.currentPatientId) {
+        showToast('Please open a patient record first', 'warning');
+        return;
+    }
+
+    // Populate visit selector
+    populateReferralVisitSelector(APP.currentPatientId);
+
+    // Pre-fill clinic name
+    var fromField = document.getElementById('referralFrom');
+    if (fromField && APP.settings.clinicName) {
+        fromField.value = APP.settings.clinicName;
+    }
+
+    document.getElementById('referralFormContainer').style.display = 'block';
+    document.getElementById('referralLetterContainer').style.display = 'none';
+    document.getElementById('referralModal').style.display = 'flex';
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeReferralModal() {
+    document.getElementById('referralModal').style.display = 'none';
+}
+
+async function populateReferralVisitSelector(patientId) {
+    var sel = document.getElementById('referralVisitSelect');
+    if (!sel) return;
+    sel.innerHTML = '<option value="">-- No visit linked --</option>';
+
+    try {
+        var res = await fetch('/api/visits?patient_id=' + patientId);
+        if (res.ok) {
+            var visits = await res.json();
+            visits.forEach(function(v) {
+                var opt = document.createElement('option');
+                opt.value = v.visit_id;
+                var date = v.visit_date ? new Date(v.visit_date).toLocaleDateString() : 'Unknown';
+                opt.textContent = date + ' - ' + (v.chief_complaint || v.diagnosis || 'Visit');
+                sel.appendChild(opt);
+            });
+        }
+    } catch (e) { /* silent */ }
+}
+
+async function submitReferral(e) {
+    e.preventDefault();
+
+    var visitId = document.getElementById('referralVisitSelect').value;
+    var reason = document.getElementById('referralReason').value.trim();
+    var urgency = document.getElementById('referralUrgency').value;
+    var from = document.getElementById('referralFrom').value.trim();
+    var to = document.getElementById('referralTo').value.trim();
+
+    if (!reason) {
+        showToast('Please provide a reason for referral', 'warning');
+        return;
+    }
+
+    var btn = document.getElementById('referralSubmitBtn');
+    setBtnLoading(btn, true, 'Generating...');
+
+    try {
+        var res = await fetch('/api/referrals/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                patient_id: APP.currentPatientId,
+                visit_id: visitId,
+                referral_reason: reason,
+                urgency: urgency,
+                referring_facility: from,
+                receiving_facility: to,
+            }),
+        });
+
+        if (!res.ok) {
+            var err = await res.json().catch(function() { return {}; });
+            throw new Error(err.detail || 'Failed to generate referral');
+        }
+
+        var referral = await res.json();
+        APP.aiConsultationCount++;
+
+        // Display the letter
+        document.getElementById('referralFormContainer').style.display = 'none';
+        document.getElementById('referralLetterContainer').style.display = 'block';
+
+        var letterHtml = '<div class="referral-letter">';
+        letterHtml += '<div class="referral-letter-urgency referral-urgency-' + escapeHtml(referral.urgency || 'routine') + '">';
+        letterHtml += escapeHtml((referral.urgency || 'routine').toUpperCase()) + ' REFERRAL';
+        letterHtml += '</div>';
+        letterHtml += '<pre class="referral-letter-text">' + escapeHtml(referral.letter || 'No letter generated') + '</pre>';
+        letterHtml += '</div>';
+
+        document.getElementById('referralLetterContent').innerHTML = letterHtml;
+
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    } finally {
+        setBtnLoading(btn, false, '<i data-lucide="send"></i> Generate with Gemma 4');
+    }
+}
+
+function printReferralLetter() {
+    var content = document.getElementById('referralLetterContent');
+    if (!content) return;
+
+    var printWindow = window.open('', '_blank');
+    printWindow.document.write('<html><head><title>Referral Letter</title>');
+    printWindow.document.write('<style>body{font-family:serif;padding:40px;font-size:14px;line-height:1.8;color:#000;}pre{white-space:pre-wrap;font-family:serif;font-size:14px;line-height:1.8;}.referral-letter-urgency{text-align:center;font-weight:bold;font-size:18px;margin-bottom:20px;padding:10px;border:2px solid #000;}</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(content.innerHTML);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+}
+
+
+// ============================================
+// QR CODE PATIENT ID CARD
+// ============================================
+async function showPatientIdCard() {
+    if (!APP.currentPatientId) {
+        showToast('Please open a patient record first', 'warning');
+        return;
+    }
+
+    document.getElementById('idCardModal').style.display = 'flex';
+
+    // Set loading state
+    document.getElementById('idCardQR').innerHTML = '<div class="id-card-photo-placeholder"><span>Loading QR...</span></div>';
+    document.getElementById('idCardName').textContent = 'Loading...';
+
+    try {
+        var res = await fetch('/api/patients/' + APP.currentPatientId + '/qr');
+        if (!res.ok) throw new Error('Failed to generate QR code');
+        var data = await res.json();
+
+        // Set QR code image
+        document.getElementById('idCardQR').innerHTML = '<img src="data:image/png;base64,' + data.qr_base64 + '" alt="Patient QR Code" class="id-card-qr-img">';
+
+        // Set patient info
+        document.getElementById('idCardName').textContent = data.name || '--';
+        document.getElementById('idCardDOB').textContent = data.dob || '--';
+        document.getElementById('idCardMRN').textContent = (data.patient_id || '').substring(0, 8);
+        document.getElementById('idCardBlood').textContent = data.blood_type || 'Unknown';
+        document.getElementById('idCardAllergies').textContent = (data.allergies || []).join(', ') || 'None known';
+
+    } catch (e) {
+        document.getElementById('idCardQR').innerHTML = '<div class="id-card-photo-placeholder"><span>QR generation failed</span></div>';
+        showToast('Error: ' + e.message, 'error');
+    }
+
+    if (window.lucide) lucide.createIcons();
+}
+
+function closeIdCardModal() {
+    document.getElementById('idCardModal').style.display = 'none';
+}
+
+function printIdCard() {
+    var card = document.getElementById('idCardContent');
+    if (!card) return;
+
+    var printWindow = window.open('', '_blank');
+    printWindow.document.write('<html><head><title>Patient ID Card</title>');
+    printWindow.document.write('<style>');
+    printWindow.document.write('body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f0f0f0;}');
+    printWindow.document.write('.id-card{width:340px;border:2px solid #1e293b;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 4px 12px rgba(0,0,0,0.15);}');
+    printWindow.document.write('.id-card-header{background:#1e293b;color:#fff;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;}');
+    printWindow.document.write('.id-card-header svg{color:#059669;}');
+    printWindow.document.write('.id-card-header span{display:flex;align-items:center;gap:6px;}');
+    printWindow.document.write('.id-card-label{background:#059669;color:#fff;padding:2px 8px;border-radius:4px;font-size:10px;letter-spacing:0.1em;}');
+    printWindow.document.write('.id-card-body{display:flex;gap:16px;padding:16px;}');
+    printWindow.document.write('.id-card-qr img{width:120px;height:120px;}');
+    printWindow.document.write('.id-card-name{font-size:16px;font-weight:700;margin-bottom:8px;color:#0f172a;}');
+    printWindow.document.write('.id-card-field{font-size:11px;color:#475569;margin-bottom:4px;}');
+    printWindow.document.write('.id-card-field-label{font-weight:700;color:#1e293b;}');
+    printWindow.document.write('.id-card-mrn{font-family:monospace;background:#f1f5f9;padding:1px 6px;border-radius:3px;}');
+    printWindow.document.write('</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(card.outerHTML);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
 }

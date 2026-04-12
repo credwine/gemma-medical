@@ -10,6 +10,7 @@ from pathlib import Path
 
 from backend.routers import assistant, clinic, drugs, maternal, medtranslate
 from backend.routers import patients, visits, medications, analytics
+from backend.routers import referrals, qrcode, formulary, queue
 from backend.ollama_client import check_model
 
 app = FastAPI(
@@ -36,6 +37,12 @@ app.include_router(patients.router)
 app.include_router(visits.router)
 app.include_router(medications.router)
 app.include_router(analytics.router)
+
+# Clinical tools
+app.include_router(referrals.router)
+app.include_router(qrcode.router)
+app.include_router(formulary.router)
+app.include_router(queue.router)
 
 
 @app.get("/manifest.json")
