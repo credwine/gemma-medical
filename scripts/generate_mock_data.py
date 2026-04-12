@@ -331,7 +331,7 @@ def generate_visits(patients, avg_visits_per_patient=6):
 
         for v in range(n_visits):
             visit_date = reg_date + timedelta(days=random.randint(v * 7, v * 30 + 30))
-            if visit_date > datetime(2026, 4, 7):
+            if visit_date > datetime.now():
                 break
 
             complaint = random.choice(CHIEF_COMPLAINTS)
@@ -380,6 +380,44 @@ def generate_visits(patients, avg_visits_per_patient=6):
         if last_visit_date:
             patient["last_visit"] = last_visit_date.isoformat()
 
+    # Add recent visits (today and this week) for demo impact
+    now = datetime.now()
+    recent_patients = random.sample(patients, min(40, len(patients)))
+    for i, patient in enumerate(recent_patients):
+        age = 2026 - int(patient["date_of_birth"][:4])
+        age_cat = "infant" if age < 2 else "child" if age < 13 else "adult"
+        complaint = random.choice(CHIEF_COMPLAINTS)
+        diagnosis = get_diagnosis_for_complaint(complaint)
+        treatment = get_treatment(diagnosis)
+
+        # First 12 patients visited today, rest this week
+        if i < 12:
+            visit_date = now - timedelta(hours=random.randint(0, 8), minutes=random.randint(0, 59))
+        else:
+            visit_date = now - timedelta(days=random.randint(1, 6), hours=random.randint(0, 12))
+
+        visit = {
+            "visit_id": str(uuid.uuid4()),
+            "patient_id": patient["patient_id"],
+            "visit_date": visit_date.isoformat(),
+            "chief_complaint": complaint,
+            "symptoms": complaint + ". " + random.choice([
+                "Patient reports symptoms for " + str(random.randint(1, 5)) + " days.",
+                "Sudden onset. First episode.",
+                "Recurrent episode.",
+            ]),
+            "vitals": generate_vitals(age_cat),
+            "diagnosis": diagnosis,
+            "treatment_plan": treatment,
+            "medications_prescribed": [],
+            "follow_up_date": (visit_date + timedelta(days=7)).strftime("%Y-%m-%d"),
+            "ai_assessment": {},
+            "notes": random.choice(["", "Malaria RDT performed.", "Patient counseled.", "Referred for labs."]),
+            "attending_worker": random.choice(WORKERS),
+        }
+        visits.append(visit)
+        patient["last_visit"] = visit_date.isoformat()
+
     return visits
 
 
@@ -420,7 +458,8 @@ def generate_queue(patients):
     waiting_patients = random.sample([p for p in patients if p["last_visit"]], min(15, len(patients)))
 
     for i, patient in enumerate(waiting_patients):
-        arrival = datetime(2026, 4, 8, 7, 30) + timedelta(minutes=random.randint(0, 180))
+        today = datetime.now().replace(hour=7, minute=30, second=0)
+        arrival = today + timedelta(minutes=random.randint(0, 180))
         priority = random.choices([1, 2, 3, 4, 5], weights=[5, 10, 30, 35, 20])[0]
 
         complaints = {
