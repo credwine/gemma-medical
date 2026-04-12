@@ -28,6 +28,8 @@
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
 
     <link rel="stylesheet" href="/css/styles.css">
+    <!-- Chart.js for vital signs trends -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <!-- Skip Navigation Link (Accessibility) -->
@@ -164,6 +166,28 @@
                 </button>
             </div>
         </header>
+
+        <!-- Patient Banner Bar (Epic-style) -->
+        <div class="patient-banner" id="patientBanner" style="display:none;">
+            <div class="patient-banner-main">
+                <div class="patient-banner-name" id="bannerName">--</div>
+                <div class="patient-banner-details">
+                    <span class="banner-detail" id="bannerAge">--</span>
+                    <span class="banner-sep">|</span>
+                    <span class="banner-detail" id="bannerSex">--</span>
+                    <span class="banner-sep">|</span>
+                    <span class="banner-detail" id="bannerDOB">DOB: --</span>
+                    <span class="banner-sep">|</span>
+                    <span class="banner-detail banner-mrn" id="bannerMRN">MRN: --</span>
+                </div>
+            </div>
+            <div class="patient-banner-alerts">
+                <div class="banner-allergies" id="bannerAllergies">
+                    <span class="allergy-badge allergy-nkda">NKA</span>
+                </div>
+                <div class="banner-conditions" id="bannerConditions"></div>
+            </div>
+        </div>
 
         <!-- Main Content -->
         <main class="content" id="main-content">

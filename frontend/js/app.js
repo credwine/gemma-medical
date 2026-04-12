@@ -854,9 +854,7 @@ function renderClinicResult(container, data) {
     if (data.possible_conditions && Array.isArray(data.possible_conditions)) {
         // Referral urgency banner
         const urgency = (data.referral_urgency || 'routine').toLowerCase();
-        const urgencyColors = { emergency: 'var(--severity-emergency)', urgent: 'var(--severity-high)', routine: 'var(--severity-moderate)', 'self-care': 'var(--severity-low)' };
-        const urgencyColor = urgencyColors[urgency] || 'var(--severity-moderate)';
-        html += `<div class="severity-banner" style="background:${urgencyColor};color:white;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-weight:700;text-transform:uppercase;">Referral: ${escapeHtml(data.referral_urgency || 'Routine')}</div>`;
+        html += getTriageWristband(urgency);
 
         // Possible conditions
         html += `<div class="result-section"><div class="result-section-title">Possible Conditions</div>`;
@@ -1824,4 +1822,115 @@ function formatAiText(text) {
     // Numbered lists
     safe = safe.replace(/^(\d+)\.\s+(.+)$/gm, '<span style="display:flex;gap:0.5em;margin-left:0.5em;"><span style="color:var(--primary);font-weight:600;">$1.</span><span>$2</span></span>');
     return safe;
+}
+
+// ============================================
+// EPIC-LEVEL CLINICAL FEATURES
+// ============================================
+
+function showPatientBanner(patient) {
+    const banner = document.getElementById('patientBanner');
+    if (!banner || !patient) return;
+    document.getElementById('bannerName').textContent = (patient.last_name + ', ' + patient.first_name).toUpperCase();
+    document.getElementById('bannerAge').textContent = patient.date_of_birth ? calcAge(patient.date_of_birth) + ' yr' : '--';
+    document.getElementById('bannerSex').textContent = (patient.sex || '--').toUpperCase();
+    document.getElementById('bannerDOB').textContent = 'DOB: ' + (patient.date_of_birth || '--');
+    document.getElementById('bannerMRN').textContent = 'MRN: ' + (patient.patient_id || '').substring(0, 8);
+    const allergyEl = document.getElementById('bannerAllergies');
+    if (patient.allergies && patient.allergies.length > 0) {
+        allergyEl.innerHTML = '<span class="allergy-badge allergy-present">ALLERGIES: ' + escapeHtml(patient.allergies.join(', ')) + '</span>';
+    } else {
+        allergyEl.innerHTML = '<span class="allergy-badge allergy-nkda">NKA</span>';
+    }
+    const condEl = document.getElementById('bannerConditions');
+    condEl.innerHTML = (patient.chronic_conditions || []).map(function(c) {
+        return '<span class="condition-badge">' + escapeHtml(c) + '</span>';
+    }).join('');
+    banner.style.display = 'flex';
+}
+
+function hidePatientBanner() {
+    var banner = document.getElementById('patientBanner');
+    if (banner) banner.style.display = 'none';
+}
+
+var vitalsChartInstance = null;
+
+function renderVitalsChart(visits, containerId) {
+    var container = document.getElementById(containerId || 'vitalsChartContainer');
+    if (!container) return;
+    var vv = visits.filter(function(v) {
+        return v.vitals && (v.vitals.bp_systolic || v.vitals.temperature_c || v.vitals.pulse_rate);
+    });
+    if (vv.length === 0) {
+        container.innerHTML = '<div class="vitals-chart-container"><h4>Vital Signs Trend</h4><p style="color:var(--text-secondary);font-size:0.85rem;">No vitals recorded yet.</p></div>';
+        return;
+    }
+    container.innerHTML = '<div class="vitals-chart-container"><h4>Vital Signs Trend</h4><canvas id="vitalsCanvas" height="200"></canvas></div>';
+    var labels = vv.map(function(v) { var d = new Date(v.visit_date); return (d.getMonth()+1) + '/' + d.getDate(); });
+    var datasets = [];
+    if (vv.some(function(v) { return v.vitals.bp_systolic; }))
+        datasets.push({ label: 'BP Sys', data: vv.map(function(v) { return v.vitals.bp_systolic || null; }), borderColor: '#dc2626', tension: 0.3, yAxisID: 'y' });
+    if (vv.some(function(v) { return v.vitals.bp_diastolic; }))
+        datasets.push({ label: 'BP Dia', data: vv.map(function(v) { return v.vitals.bp_diastolic || null; }), borderColor: '#ea580c', tension: 0.3, yAxisID: 'y' });
+    if (vv.some(function(v) { return v.vitals.pulse_rate; }))
+        datasets.push({ label: 'Pulse', data: vv.map(function(v) { return v.vitals.pulse_rate || null; }), borderColor: '#3b82f6', tension: 0.3, yAxisID: 'y' });
+    if (vv.some(function(v) { return v.vitals.temperature_c; }))
+        datasets.push({ label: 'Temp', data: vv.map(function(v) { return v.vitals.temperature_c || null; }), borderColor: '#f59e0b', tension: 0.3, yAxisID: 'y1' });
+    if (vitalsChartInstance) vitalsChartInstance.destroy();
+    var ctx = document.getElementById('vitalsCanvas');
+    if (!ctx || typeof Chart === 'undefined') return;
+    vitalsChartInstance = new Chart(ctx, {
+        type: 'line', data: { labels: labels, datasets: datasets },
+        options: { responsive: true, interaction: { mode: 'index', intersect: false },
+            plugins: { legend: { position: 'bottom', labels: { usePointStyle: true } } },
+            scales: {
+                y: { position: 'left', title: { display: true, text: 'mmHg / bpm' }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                y1: { position: 'right', title: { display: true, text: 'Celsius' }, grid: { drawOnChartArea: false }, min: 35, max: 42 }
+            }
+        }
+    });
+}
+
+function getTriageWristband(urgency) {
+    var map = {
+        emergency: { esi: 'ESI-1', label: 'IMMEDIATE', cls: 'triage-esi1' },
+        urgent: { esi: 'ESI-2', label: 'EMERGENT', cls: 'triage-esi2' },
+        routine: { esi: 'ESI-3', label: 'URGENT', cls: 'triage-esi3' },
+        'self-care': { esi: 'ESI-5', label: 'NON-URGENT', cls: 'triage-esi5' }
+    };
+    var t = map[(urgency || 'routine').toLowerCase()] || map['routine'];
+    return '<div class="triage-wristband ' + t.cls + '"><span class="triage-level">' + t.esi + '</span><span>' + t.label + '</span></div>';
+}
+
+function getPatientStatus(patient) {
+    if (!patient.last_visit) return { color: 'status-dot-never', label: 'No visits' };
+    var days = Math.floor((Date.now() - new Date(patient.last_visit).getTime()) / 86400000);
+    if (days <= 30) return { color: 'status-dot-active', label: 'Active' };
+    if (days <= 90) return { color: 'status-dot-recent', label: days + 'd ago' };
+    return { color: 'status-dot-inactive', label: days + 'd ago' };
+}
+
+function renderSOAPNote(visit) {
+    var s = visit.symptoms || visit.chief_complaint || 'Not documented';
+    var o = formatVitalsLine(visit.vitals);
+    var a = visit.diagnosis || 'Pending';
+    var p = visit.treatment_plan || 'Not documented';
+    return '<div class="soap-note">'
+        + '<div class="soap-section"><div class="soap-label soap-label-s">S</div><div class="soap-content">' + escapeHtml(s) + '</div></div>'
+        + '<div class="soap-section"><div class="soap-label soap-label-o">O</div><div class="soap-content">' + (o || 'No vitals') + '</div></div>'
+        + '<div class="soap-section"><div class="soap-label soap-label-a">A</div><div class="soap-content">' + escapeHtml(a) + '</div></div>'
+        + '<div class="soap-section"><div class="soap-label soap-label-p">P</div><div class="soap-content">' + escapeHtml(p) + '</div></div>'
+        + '</div>';
+}
+
+function formatVitalsLine(vitals) {
+    if (!vitals) return '';
+    var parts = [];
+    if (vitals.bp_systolic && vitals.bp_diastolic) parts.push('BP: ' + vitals.bp_systolic + '/' + vitals.bp_diastolic + ' mmHg');
+    if (vitals.temperature_c) parts.push('Temp: ' + vitals.temperature_c + ' C');
+    if (vitals.pulse_rate) parts.push('Pulse: ' + vitals.pulse_rate + ' bpm');
+    if (vitals.respiratory_rate) parts.push('RR: ' + vitals.respiratory_rate);
+    if (vitals.weight_kg) parts.push('Wt: ' + vitals.weight_kg + ' kg');
+    return parts.join(' | ');
 }
